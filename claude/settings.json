@@ -1,0 +1,35 @@
+{
+  "model": "fable[1m]",
+  "effortLevel": "xhigh",
+  "advisorModel": "opus",
+  "autoUpdatesChannel": "latest",
+  "theme": "dark",
+  "enableAllProjectMcpServers": false,
+  "env": {
+    "ENABLE_PROMPT_CACHING_1H": "1"
+  },
+  "permissions": {
+    "deny": [
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ~*)",
+      "Bash(rm -rf $HOME*)",
+      "Bash(rm -rf %USERPROFILE%*)",
+      "Bash(git push --force *)",
+      "Bash(git push --force)",
+      "Bash(git push -f *)",
+      "Bash(git push -f)",
+      "Bash(git reset --hard *)",
+      "Bash(git reset --hard)",
+      "Bash(git clean -f *)",
+      "Bash(git clean -fd *)",
+      "Bash(git clean -fdx *)",
+      "Bash(git checkout -- *)",
+      "Bash(git checkout .)",
+      "Bash(git restore .)",
+      "Bash(git restore --staged .)",
+      "Read(**/.credentials*)",
+      "Read(**/.env*)",
+      "Read(**/credentials.json)"
+    ]
+  }
+}

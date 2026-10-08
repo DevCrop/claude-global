@@ -1,0 +1,27 @@
+# Credentials and auth (never commit)
+.credentials*
+.env*
+mcp-needs-auth-cache.json
+.claude.json
+
+# Personal session state
+settings.local.json
+history.jsonl
+active-projects.json
+stats-cache.json
+
+# Auto-generated and ephemeral
+projects/
+sessions/
+session-env/
+shell-snapshots/
+backups/
+cache/
+plugins/
+reports/
+ide/
+*.lock
+
+# OS and editor
+Thumbs.db
+.vscode/
