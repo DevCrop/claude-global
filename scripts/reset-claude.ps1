@@ -13,7 +13,7 @@ $backupDir  = "D:\backup\claude-20261008"
 # Config-layer items to remove (legacy). Everything else in ~/.claude is kept.
 $removeItems = @(
     "CLAUDE.md", "settings.json", "settings.json.bak-20260628-162002",
-    "skills", "agents", "hooks", "state", "routines", "templates", "chrome",
+    "skills", "agents", "hooks", "state", "routines", "templates",
     "statusline.ps1", "cleanup.ps1",
     "ARCHITECTURE.md", "AUTOMATION.md", "HARNESS_ARCHITECTURE.md",
     "PROMPT_ALGO.md", "README.md", "RTK.md",
@@ -22,9 +22,12 @@ $removeItems = @(
 )
 
 # 1. Refuse to run while Claude is still running.
-$running = Get-Process -Name "claude*" -ErrorAction SilentlyContinue
+# Ignore the Chrome native-messaging bridge (claude.exe --chrome-native-host):
+# Chrome starts it, and it exits when Chrome closes.
+$running = Get-CimInstance Win32_Process -Filter "Name like 'claude%'" -ErrorAction SilentlyContinue |
+    Where-Object { $_.CommandLine -notmatch "--chrome-native-host" }
 if ($running) {
-    Write-Host "Claude is still running (PIDs: $($running.Id -join ', ')). Close the app and CLI first." -ForegroundColor Red
+    Write-Host "Claude is still running (PIDs: $($running.ProcessId -join ', ')). Close the app and CLI first." -ForegroundColor Red
     exit 1
 }
 
@@ -54,7 +57,7 @@ if (Test-Path $claudeJson) { $targets += $claudeJson }
 Write-Host "Will delete (legacy config):" -ForegroundColor Yellow
 $targets | ForEach-Object { Write-Host "  $_" }
 Write-Host ""
-Write-Host "Will keep: .credentials.json, projects/, sessions/, session-env/, plugins/, cache/, ide/, shell-snapshots/, history.jsonl" -ForegroundColor Cyan
+Write-Host "Will keep: .credentials.json, projects/, sessions/, session-env/, plugins/, cache/, ide/, shell-snapshots/, history.jsonl, chrome/ (Chrome bridge)" -ForegroundColor Cyan
 Write-Host "Backup: $backupDir (intact)"
 Write-Host ""
 
