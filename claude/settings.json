@@ -1,5 +1,5 @@
 {
-  "model": "fable[1m]",
+  "model": "sonnet",
   "effortLevel": "xhigh",
   "advisorModel": "opus",
   "autoUpdatesChannel": "latest",
