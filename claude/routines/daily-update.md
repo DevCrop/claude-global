@@ -2,7 +2,9 @@
 
 Purpose: track Claude Code and Anthropic releases, report what matters, and propose setup changes. This routine never changes `~/.claude` on its own.
 
-Model: Sonnet. Run once per day.
+Model: Sonnet (target). Run once per day.
+
+Note: the scheduled task has no model field, so it runs on the app default. The first run (2026-10-09) ran on Haiku by decision. Set Sonnet for later runs in the app's Scheduled settings, and check the model shown in the run session.
 
 ## Steps
 
