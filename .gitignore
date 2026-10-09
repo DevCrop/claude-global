@@ -29,3 +29,4 @@ Thumbs.db
 
 # Archify diagram output
 .archify/
+__pycache__/

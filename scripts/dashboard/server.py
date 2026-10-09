@@ -4,7 +4,8 @@
 Run: python3 scripts/dashboard/server.py [--port 8787]
 Reads: git history, gh PR list, scripts/verify.sh --live, reports/*.md, claude/settings.json,
 and the tool-call names and timestamps of the newest session log in ~/.claude/projects.
-It never reads message text, tool inputs beyond a file's basename, or credentials.
+It parses the log tail in memory but emits only tool names, times, a file basename, and a command's first word plus a plain subcommand
+(never arguments, so a pasted token or `KEY=value` cannot leave the machine). Message text is never emitted.
 """
 import json, os, re, subprocess, sys, threading, time
 from datetime import datetime, timezone
@@ -118,6 +119,17 @@ def reports():
     return items
 
 
+def safe_command(cmd):
+    """First word, plus the second only when it is a plain subcommand or script path (no '=', no leading '-')."""
+    w = cmd.split()
+    if not w:
+        return ""
+    head = os.path.basename(w[0])[:20]
+    if len(w) > 1 and re.fullmatch(r"[A-Za-z0-9_./-]{1,40}", w[1]) and not w[1].startswith("-") and head in ("git", "gh", "bash", "python3", "python", "npm", "npx", "rtk", "winget"):
+        return head + " " + w[1]
+    return head
+
+
 def session_events(limit=120):
     """Tool-call name, time and a safe target (file basename or command head) from the newest session log."""
     files = list(PROJECTS.glob("*/*.jsonl")) if PROJECTS.is_dir() else []
@@ -151,7 +163,7 @@ def session_events(limit=120):
                     if inp.get("file_path"):
                         target = os.path.basename(str(inp["file_path"]))
                     elif inp.get("command"):
-                        target = " ".join(str(inp["command"]).split()[:2])[:40]
+                        target = safe_command(str(inp["command"]))
                     elif inp.get("pattern"):
                         target = "search"
                     events.append({"at": ts, "kind": "tool", "name": str(x.get("name", "?")).split("__")[-1], "target": target})
@@ -174,6 +186,10 @@ def state():
 
 class H(BaseHTTPRequestHandler):
     def do_GET(self):
+        # Refuse foreign Host headers (DNS rebinding against a local server).
+        if self.headers.get("Host", "").split(":")[0] not in ("127.0.0.1", "localhost"):
+            self.send_error(403)
+            return
         if self.path.startswith("/api/state"):
             body, ctype = json.dumps(state()).encode(), "application/json"
         elif self.path in ("/", "/index.html"):
