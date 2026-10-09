@@ -99,7 +99,7 @@
 - `theme`: `dark`
 - `enableAllProjectMcpServers`: `false`
 - `env.ENABLE_PROMPT_CACHING_1H`: 제거함. 공식 문서상 구독 플랜의 메인 대화는 기본이 1시간 TTL이라 중복이고, 이 변수는 서브에이전트·압축 요청까지 1시간으로 올려 쓰기 비용만 늘린다 (짧은 작업에는 손해).
-- `permissions.deny` 28개 (20개 + 변형 우회 8개: `rm -fr` 4개, `git push * --force`/`-f` 4개):
+- `permissions.deny` 53개 (원래 20개 + 변형 우회 8개 + 같은 Bash 패턴 25개를 `rtk ` 접두어로 복제한 것. 아래 함정 절 참고):
   - `Bash(rm -rf /*)`, `Bash(rm -rf ~*)`, `Bash(rm -rf $HOME*)`, `Bash(rm -rf %USERPROFILE%*)`
   - `Bash(git push --force *)`, `Bash(git push --force)`, `Bash(git push -f *)`, `Bash(git push -f)`
   - `Bash(git reset --hard *)`, `Bash(git reset --hard)`
@@ -165,7 +165,7 @@ Ponytail (미설치, 의도적 보류):
 
 ## 7. 남은 작업 (순서대로)
 
-0. 반영함(되돌릴 수 있음): `effortLevel`을 high로, `explorer`에 `omitClaudeMd: true`. 결정 대기: `rm -rf /*` 과차단 유지 여부, 루틴 자동 설치 허용 여부. 브랜치 `claude/add-apply-script`의 커밋은 push 전이다. 맥과 Windows Git Bash에서 `scripts/apply.sh`를 한 번씩 실행해 확인한다. RTK는 0.51.0으로 올린다.
+0. 2026-10-09 실행 QA 결과는 섹션 9의 "하네스 QA" 참고. 반영함(되돌릴 수 있음): `effortLevel`을 high로, `explorer`에 `omitClaudeMd: true`. 결정 대기: `rm -rf /*` 과차단 유지 여부, 루틴 자동 설치 허용 여부. 브랜치 `claude/add-apply-script`의 커밋은 push 전이다. 맥과 Windows Git Bash에서 `scripts/apply.sh`를 한 번씩 실행해 확인한다. RTK는 0.51.0으로 올린다.
 
 1. 루틴 모델을 Sonnet으로 고정 (앱 UI). 첫 자동 실행은 sonnet-5-5로 돌았지만 그것이 UI 설정 때문인지 기본값 때문인지 모른다. UI에서 명시적으로 지정한 뒤, 내일 이후 자동 실행 세션의 모델을 `get_session`으로 다시 확인한다.
 2. CLI 최신화: 일일 루틴 보고서에 업데이트 명령이 나오면 실행한다. 승인 필요. 확인: `claude --version`.
@@ -213,6 +213,15 @@ deny 규칙 시험:
 `/usage` 대체 조회 (앱 도구, 2026-10-08 시점):
 - 플랜 Pro. 5시간 한도 4%, 주간 한도 0%, 추가 사용량(extra usage) 꺼짐(월 한도 20.00 USD).
 
+하네스 QA (2026-10-09, 클라우드 컨테이너, `claude -p` 2.1.295, 이 리포의 설정을 `--settings`로 적용, 스크래치 저장소):
+- 메인 모델: `model: sonnet`은 `claude-sonnet-5-5`로 해석됐다. 같은 호출에서 `claude-haiku-5-5` 토큰이 소량(입력 약 1.2k) 별도로 잡혔다. 내장 보조 작업으로 보이며 원인은 확인하지 못했다.
+- 서브에이전트 라우팅: `explorer`와 `reviewer`가 각각 1회 spawn되고 완료됐다(`subagent_stats`). Haiku 토큰(입력 1337, 출력 1404)이 explorer 작업과 일치하고 Sonnet이 메인과 reviewer를 맡았다. 모델별 토큰이 에이전트별로 직접 귀속되지는 않아 explorer=Haiku는 추정에 가깝다.
+- `omitClaudeMd`: 프로젝트 CLAUDE.md의 마커 줄을 reviewer는 인용했고 explorer는 보지 못했다. 동작 확인.
+- advisor: 반복 호출에서 `iterations`에 `advisor_message`(모델 `claude-opus-5-5`)가 기록됐다. 입력 33,791토큰, 출력 754토큰, 비용 약 0.15 USD로 같은 호출의 메인 Sonnet 비용(약 0.04 USD)의 약 3.6배였다. 질문이 짧아도 시스템 프롬프트와 도구 정의를 포함한 전체 대화를 읽는다. CLAUDE.md의 "접근 확정 전, 반복 오류, 완료 전에 자문" 규칙을 모델이 충실히 따르면 작업당 여러 번 호출될 수 있다.
+- effort: 같은 프롬프트에서 설정(high)은 thinking 105토큰, `--effort low`는 0토큰이었다. 설정이 low가 아님은 확인했지만 high인지 medium인지 구분하지는 못했다.
+- rtk 미설치 + 실제 settings.json: `git status`는 정상 실행, `git push --force`는 차단.
+- 한계: 모두 이 컨테이너(Linux)에서 `claude -p`로 한 시험이다. Windows, Mac, 대화형 세션, 실제 RTK 바이너리는 시험하지 못했다. 앱의 루틴 예약 실행도 시험하지 못했다.
+
 RTK 절감 (시점별로 값이 다르다):
 - 99회 시점: 입력 5.9K, 출력 3.5K, 절감 2.5K (42.8%). 절감은 거의 `git status`(2.3K, 26회, 56.1%)에서 나왔다. `git diff` 171(37.3%), `ls -la` 68(71.6%), 나머지 약 49회는 0이다.
 - 158회 시점(2026-10-09 재측정): 입력 11.5K, 출력 9.0K, 절감 2.7K (23.1%).
@@ -244,7 +253,7 @@ RTK 절감 (시점별로 값이 다르다):
 - `PLAN.md`는 원래 계획이다. 실제와 다른 곳(전체 삭제 리셋)은 `PLAN.md` 상단의 정정 메모와 이 문서를 따른다.
 - 예약 작업 `SKILL.md`(첫 컴퓨터 라이브와 저장소 참조본 모두 원본에서 `routines/` 경로 표기가 틀려 있었다). 저장소 참조본은 `claude/routines/daily-update.md`로 고쳤다. 라이브 쪽은 아직 원본 그대로이며 동작에는 영향이 없다 (본문이 곧바로 올바른 경로로 보정한다).
 
-- RTK 훅과 deny 규칙의 상호작용은 미검증이다. 공식 permissions·hooks 문서: PreToolUse 훅이 `updatedInput`으로 명령을 바꾸면 권한 규칙은 Claude가 보낸 원본이 아니라 훅이 돌려준 입력을 기준으로 평가한다. RTK README: 훅은 Bash 명령을 `git status` -> `rtk git status` 식으로 다시 쓴다. 따라서 `Bash(git push --force *)` 같은 deny 패턴이 `rtk git push --force ...`에 매칭되는지 확인되지 않았다. 2026-10-09 deny 시험은 RTK가 없는 컨테이너에서 한 것이라 이 조합을 시험하지 못했다. RTK가 설치된 머신에서 원격 없는 스크래치 저장소로 `git push --force`, `git reset --hard HEAD`가 차단되는지 직접 확인한다. 차단되지 않으면 `rtk ` 접두어 패턴을 추가하거나 샌드박스를 쓴다.
+- RTK 훅과 deny 규칙: 공식 문서상 권한 규칙은 훅이 돌려준 입력을 기준으로 평가되고, RTK는 Bash 명령을 `git status` -> `rtk git status`로 다시 쓴다. 2026-10-09 시뮬레이션 QA(RTK 대신 같은 방식으로 `rtk ` 접두어를 붙이는 모의 훅과 스텁 `rtk`)에서 원래 deny 패턴은 `rtk git push --force origin main`, `rtk git reset --hard HEAD`, `rtk rm -fr ~/x`를 막지 못했고 명령이 실제 실행됐다(훅이 `allow`를 돌려주든 안 주든 동일). Bash deny 패턴 25개를 `rtk ` 접두어로 복제해 53개로 늘린 뒤 같은 시험에서 전부 차단됐고, 대조군 `git status`는 정상 실행됐다. 실제 RTK 바이너리로는 아직 시험하지 못했다(컨테이너에서 `rtk-ai/rtk` 접근 불가). RTK가 설치된 머신에서 스크래치 저장소로 `git push --force`, `git reset --hard HEAD`가 차단되는지 한 번 확인한다.
 - deny/ask 규칙은 보안 경계가 아니다(공식 permissions 문서). `/bin/rm -rf`, `bash -c '...'`, `git -C . push`처럼 다른 형태의 호출은 못 막는다. 명령 텍스트와 무관한 강제는 샌드박스(`/sandbox`)로 한다. 샌드박스는 기본 꺼짐이고 macOS, Linux, WSL2에서만 동작하며 네이티브 Windows에서는 명령이 샌드박스 없이 실행된다.
 - 공식 비용 문서 권장 중 미적용: 상태줄로 컨텍스트 사용량 상시 표시(스크립트 필요, 보류), 미사용 MCP 서버 비활성화(`/mcp`, 사용자 조치), 프롬프트 제안 끄기(배경 토큰 소량, 선택).
 
