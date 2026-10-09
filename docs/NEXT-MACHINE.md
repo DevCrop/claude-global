@@ -102,6 +102,7 @@
 - `model`: `sonnet`
 - `effortLevel`: `high` (공식 기본은 medium, xhigh는 토큰 소모 증가. 되돌리려면 `/effort`로 세션 중 변경하거나 이 값을 바꾼다. Sonnet 5.5는 세션 중 변경해도 캐시 유지)
 - `advisorModel`: `opus`
+- `autoCompactWindow`: `400000` (2026-10-09). 컨텍스트가 400K 토큰에 이르면 자동 압축한다. 기본(`auto`)은 네이티브 1M 모델(Sonnet 5.5)에서 약 967K. 근거는 best-practices의 "컨텍스트가 차면 성능이 떨어진다"이며 이 사용 패턴으로 측정한 값은 아니다. 압축이 너무 잦으면 600000 쪽으로 올린다. 이 값은 저장소에서만 관리한다: `/autocompact`는 `~/.claude/settings.json`의 모델별 `modelSettings`에 저장되어 `apply.sh`가 덮어쓰고 `verify.sh --live`에 drift로 잡힌다. 우선순위는 환경 변수 `CLAUDE_CODE_AUTO_COMPACT_WINDOW` > `--autocompact` > `/autocompact`(모델별 저장값) > 이 키.
 - `statusLine`: `jq`로 `[모델] N% context`를 출력하는 command. `jq` 필요.
 - 제거한 키(공식 settings-reference의 기본값과 같아서 vanilla 기준으로 삭제, 2026-10-09): `autoUpdatesChannel: latest`(미설정 시 latest), `theme: dark`(기본 dark), `enableAllProjectMcpServers: false`(미설정 시 서버마다 승인 요청). 프로젝트 설정이 같은 키를 true로 두면 사용자 설정보다 우선하므로 false를 명시해도 보호가 되지 않는다.
 - `env.ENABLE_PROMPT_CACHING_1H`: 제거함. 공식 문서상 구독 플랜의 메인 대화는 기본이 1시간 TTL이라 중복이고, 이 변수는 서브에이전트·압축 요청까지 1시간으로 올려 쓰기 비용만 늘린다 (짧은 작업에는 손해).
