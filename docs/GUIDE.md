@@ -46,7 +46,7 @@ Undo: copy files back from `~/.claude-backup-<timestamp>/`.
 
 ## 2. Bootstrap a project (once, before the first task)
 
-Run `/project-setup` in the project directory (manual-only skill). It reads manifests, CI workflows and lint configs, finds the verification command per area, and proposes `CLAUDE.md`, `.claude/rules/*.md` and `.claude/settings.json` as files for you to approve. It installs nothing and invents no commands; what it cannot confirm is listed under "Not verified". Writes under `.claude/` ask for your approval.
+Run `/project-setup` in the project directory (manual-only skill). It reads manifests, CI workflows and lint configs, finds the verification command per area, and proposes `CLAUDE.md`, `.claude/rules/*.md` and `.claude/settings.json` as files for you to approve. It installs nothing and invents no commands; what it cannot confirm is listed under "Not verified". Under the bypass default there is no permission prompt for writes, so the skill's own step 10 (an explicit yes in chat) is the approval.
 
 What to check afterwards:
 1. `CLAUDE.md` is under 200 lines and every line would cause a mistake if removed (`/doctor` proposes cuts).
