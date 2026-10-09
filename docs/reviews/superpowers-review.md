@@ -29,10 +29,16 @@ Official marketplace listing, `tests/`, an external eval harness, and design his
 - `verification-before-completion` (556 words) and `requesting-code-review` (422 words) are small and overlap the existing "real check before done" preference.
 - `systematic-debugging`: no fix before root cause; matches "failing test first".
 
-## Recommendation for claude-global
+## Decision for claude-global (2026-10-09)
 
-The three small skills above duplicate what user preferences already enforce, so marginal gain is low. Full install adds hook-injected context and an unverified interaction with RTK/deny-rule evaluation (`scripts/qa-deny.sh` not run against it). If adopted, copy individual skills into `claude/` instead of installing the plugin, and re-run `bash scripts/qa-deny.sh`.
+Work mix: markup/CSS, frontend, backend, reviews. Superpowers fits feature development with ambiguous requirements; it adds cost and friction for markup and small fixes. The small skills (verification, debugging, review) duplicate rules already in user preferences and `claude/CLAUDE.md`.
+
+- Not installed at user scope. An enabled plugin is in every session (names and descriptions of its skills every turn, hooks at their events), and this plugin's SessionStart hook injects the bootstrap each time (Claude Code plugins doc).
+- Installed per project, only for feature-development repositories: `claude plugin install superpowers@claude-plugins-official --scope local` (`--scope project` shares it; each collaborator installs it themselves).
+- Cost can be read before and after: `claude plugin details superpowers` shows the always-on token count.
+- Before keeping it in a project, run one real task with and without it and compare cost and rework (one sample proves little, as with Ponytail).
+- Orchestration rules live in the `orchestrate` skill and `project-setup` bootstraps projects; neither depends on Superpowers.
 
 ## Open
 
-Which skills (if any) to adopt, after reading their bodies in full.
+Whether the comparison above shows a benefit on a real feature task.
