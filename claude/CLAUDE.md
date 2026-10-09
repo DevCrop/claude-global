@@ -35,6 +35,6 @@ Applies to every project on this machine. Project `CLAUDE.md` files add to these
 - Ponytail is not active by default.
 
 ## Updates
-- Keep Claude Code current (`autoUpdatesChannel` is `latest`). The daily routine in `routines/daily-update.md` reports new releases and proposes config changes. Changes are applied only after review.
+- Claude Code updates itself on the default channel. The daily routine in `routines/daily-update.md` reports new releases and tool health and proposes config changes. Changes are applied only after review.
 
 @RTK.md

@@ -251,6 +251,8 @@ RTK 절감 (시점별로 값이 다르다):
 - 예약 작업 `SKILL.md`(첫 컴퓨터 라이브와 저장소 참조본 모두 원본에서 `routines/` 경로 표기가 틀려 있었다). 저장소 참조본은 `claude/routines/daily-update.md`로 고쳤다. 라이브 쪽은 아직 원본 그대로이며 동작에는 영향이 없다 (본문이 곧바로 올바른 경로로 보정한다).
 
 - RTK 훅과 deny 규칙: 공식 문서상 권한 규칙은 훅이 돌려준 입력을 기준으로 평가되고, RTK는 Bash 명령을 `git status` -> `rtk git status`로 다시 쓴다. 2026-10-09 시뮬레이션 QA(RTK 대신 같은 방식으로 `rtk ` 접두어를 붙이는 모의 훅과 스텁 `rtk`)에서 원래 deny 패턴은 `rtk git push --force origin main`, `rtk git reset --hard HEAD`, `rtk rm -fr ~/x`를 막지 못했고 명령이 실제 실행됐다(훅이 `allow`를 돌려주든 안 주든 동일). Bash deny 패턴 25개를 `rtk ` 접두어로 복제해 53개로 늘린 뒤 같은 시험에서 전부 차단됐고, 대조군 `git status`는 정상 실행됐다. 실제 RTK 바이너리로는 아직 시험하지 못했다(컨테이너에서 `rtk-ai/rtk` 접근 불가). RTK가 설치된 머신에서 `scripts/qa-deny.sh`를 한 번 실행해 전부 PASS인지 확인한다(스크래치 저장소만 쓴다). 이 스크립트는 모의 훅으로 검증했다: 현재 설정은 PASS, 복제 패턴이 없던 이전 설정(`0d28f82`)은 5건 FAIL.
+- `state/last-seen.json`은 루틴이 쓰는 추적 파일이다. 루틴이 도는 머신에서 이 파일이 수정된 채로 `git pull`하면, 같은 줄을 바꾼 커밋(PR #1이 이 파일에 키를 추가했다)과 부딪혀 pull이 중단된다. pull 전에 `git checkout -- state/last-seen.json`으로 로컬 변경을 버리면 된다(루틴이 다음 실행에서 다시 쓴다).
+- 서브에이전트는 설정된 advisor를 상속한다(공식 advisor 문서). 2026-10-09 다단계 작업 시험에서 reviewer 2회가 자동 위임됐고 Opus 입력 81.7k토큰이 쓰여 전체 비용(약 0.94 USD)의 약 47%를 차지했다. 메인에는 advisor 호출 기록이 없어 Opus 사용은 reviewer 쪽으로 보이지만 에이전트별로 직접 귀속되지는 않았다(추정).
 - deny/ask 규칙은 보안 경계가 아니다(공식 permissions 문서). `/bin/rm -rf`, `bash -c '...'`, `git -C . push`처럼 다른 형태의 호출은 못 막는다. 명령 텍스트와 무관한 강제는 샌드박스(`/sandbox`)로 한다. 샌드박스는 기본 꺼짐이고 macOS, Linux, WSL2에서만 동작하며 네이티브 Windows에서는 명령이 샌드박스 없이 실행된다.
 - 공식 비용 문서 권장 중 미적용: 상태줄로 컨텍스트 사용량 상시 표시(스크립트 필요, 보류), 미사용 MCP 서버 비활성화(`/mcp`, 사용자 조치), 프롬프트 제안 끄기(배경 토큰 소량, 선택).
 
