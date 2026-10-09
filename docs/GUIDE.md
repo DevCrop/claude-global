@@ -54,6 +54,7 @@ What to check afterwards:
 3. Path-scoped rules use the documented frontmatter, a YAML `paths:` list (the only field Claude Code reads in a rule).
 4. Permissions: `deny` repeats the global `.env*` and credentials rules on purpose (cloud sessions and teammates do not read `~/.claude`); `allow` lists only read-only check commands and is inert locally under the global bypass default; each Bash rule has its `rtk ` twin where RTK is installed. No `defaultMode`.
    Also pick how hard the check gates the work (prompt line, `/goal`, Stop hook, reviewer subagent; the skill asks) and add `CLAUDE.local.md` and `.claude/settings.local.json` to the project `.gitignore`.
+   Projects that share `AGENTS.md` with Codex: `AGENTS.md` stays the source and the skill never edits it. With no `CLAUDE.md`, Claude Code reads `AGENTS.md` itself, so the skill adds only `.claude/` files; a `CLAUDE.md` it creates must start with `@AGENTS.md` (a `CLAUDE.md` without the import makes Claude stop reading `AGENTS.md`; use the import, not a symlink, on Windows).
 5. Feature-development projects only: `claude plugin install superpowers@claude-plugins-official --scope local` (`--scope project` shares it; each collaborator installs it themselves). Skip it for markup-only or small-fix projects. Not user scope.
 6. In a new session: `/context` shows the project `CLAUDE.md`, `/hooks` lists only intended hooks.
 

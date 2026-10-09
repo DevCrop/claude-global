@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # QA for the project-setup skill. Builds throwaway projects, runs the skill with `claude -p`, grades the stream.
-# Usage: bash scripts/qa-project-setup.sh <work-dir> [fixture...]   (fixtures: next php react markup existing; default all)
+# Usage: bash scripts/qa-project-setup.sh <work-dir> [fixture...]   (fixtures: next php react markup existing agents both; default all)
 # Needs: claude CLI (uses the sonnet model, costs tokens), jq, git. The script writes only under <work-dir>; the claude runs
 # use your global settings (bypass default) and are not persisted (--no-session-persistence), but nothing stops a model from writing elsewhere.
 # Axes: G = reads the global layer and does not restate it (4 English phrases only); I = follows the global instructions (no .env,
@@ -13,7 +13,7 @@
 set -u
 repo="$(cd "$(dirname "$0")/.." && pwd)"
 work="${1:?usage: bash scripts/qa-project-setup.sh <work-dir> [fixture...]}"; shift
-[ $# -gt 0 ] && names="$*" || names="next php react markup existing"
+[ $# -gt 0 ] && names="$*" || names="next php react markup existing agents both"
 case "$names" in *[!a-z\ ]*) echo "fixture names are lower-case words only" >&2; exit 2 ;; esac
 command -v jq >/dev/null && command -v claude >/dev/null || { echo "needs jq and claude" >&2; exit 2; }
 mkdir -p "$work/_out"; work="$(cd "$work" && pwd)"
@@ -42,6 +42,13 @@ fixture() {
     mkdir -p src; echo 'export const A=()=>null' > src/A.tsx ;;
   markup)
     mkdir -p css; echo '<html><body>hi</body></html>' > index.html; echo 'body{margin:0}' > css/style.css ;;
+  agents|both)
+    printf '# Rules\n- Follow the 7-step change process.\n- Edit only the requested scope.\n' > AGENTS.md
+    echo '{"name":"a","scripts":{"test":"vitest run","build:css":"sass a.scss:a.css"}}' > package.json
+    printf 'up:\n\tdocker-compose up -d web\n' > makefile; printf 'services:\n  web:\n    image: php:8\n' > docker-compose.yml
+    if [ "$1" = both ]; then # a copy of AGENTS.md that outgrew 200 lines and still has template placeholders
+      { echo '# [REPLACE: project name]'; i=0; while [ $i -lt 210 ]; do echo "- rule $i"; i=$((i + 1)); done; } > CLAUDE.md
+    fi ;;
   existing)
     echo '{"name":"a","scripts":{"test":"jest"}}' > package.json; echo '# Mine\n- EXISTING_MARKER keep this line' > CLAUDE.md
     mkdir -p .claude; echo '{"permissions":{"allow":["Bash(npm test)"]}}' > .claude/settings.json ;;
@@ -85,6 +92,13 @@ grade() { # name
     react)    grep -Eq 'vitest|npm test' "$r" && pass "$n P: test command found" || fail "$n P: missing test command" ;;
     markup)   printf '%s' "$prop" | grep -q 'Bash(' && fail "$n P: allows a command although no check exists" || pass "$n P: invented no check"
               grep -Eq '질문|Question' "$r" && pass "$n P: asks what the check should be" || fail "$n P: did not ask" ;;
+    agents)   # CLAUDE.md must not be proposed, or must start with @AGENTS.md (otherwise Claude stops reading AGENTS.md)
+              if printf '%s' "$prop" | grep -Eq '^[+ ]?@AGENTS\.md'; then pass "$n P: any CLAUDE.md starts with @AGENTS.md"
+              elif grep -Eq '만들지 않|제안하지 않|필요하지 않|불필요|생성하지 않' "$r"; then pass "$n P: no CLAUDE.md proposed"
+              else fail "$n P: proposes CLAUDE.md without @AGENTS.md (or says nothing about it)"; fi
+              grep -Eq 'npm test|vitest' "$r" && pass "$n P: test command found" || fail "$n P: missing test command" ;;
+    both)     printf '%s' "$prop" | grep -Eq '^[+ ]?@AGENTS\.md' && pass "$n P: CLAUDE.md proposed as @AGENTS.md import" || fail "$n P: no @AGENTS.md import proposed"
+              grep -q 'REPLACE' "$r" && pass "$n P: lists the [REPLACE:] placeholder" || fail "$n P: placeholder not reported" ;;
     existing) grep -q 'EXISTING_MARKER' "$r" && pass "$n P: refers to the existing CLAUDE.md (diff, not overwrite)" || fail "$n P: ignored the existing CLAUDE.md" ;;
   esac
 }
