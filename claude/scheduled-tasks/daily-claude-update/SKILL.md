@@ -5,7 +5,7 @@ description: Check Claude Code changelog and Anthropic news; write a report only
 
 Reference copy of the scheduled task body. Adjust the absolute paths below to this machine before using it.
 
-Run the daily update routine defined in D:\project\claude-global\routines\daily-update.md. Use the file at claude/routines/daily-update.md inside D:\project\claude-global, which holds the same steps.
+Run the daily update routine defined in D:\project\claude-global\claude\routines\daily-update.md.
 
 Steps:
 1. Run `claude --version` to get the installed version.

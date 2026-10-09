@@ -3,6 +3,8 @@
 Scope: `~/.claude` (global Claude Code). Codex is out of scope.
 Source of truth: this repository. `~/.claude` is rebuilt from `claude/` after a clean reset.
 
+> Correction (2026-10-09): this is the original plan. The reset actually done was partial (config layer only; login, history, sessions, plugins and `chrome/` were kept), not the full delete listed below. For current state and next steps, follow `docs/NEXT-MACHINE.md`.
+
 ## Decisions (defaults applied, change any of them here)
 
 | Item | Decision |

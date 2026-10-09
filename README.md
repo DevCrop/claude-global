@@ -9,7 +9,9 @@ Source of truth for the global Claude Code setup on this machine (`~/.claude`).
 - `claude/RTK.md`, `claude/agents/` — RTK note and subagents, copied to `~/.claude/`
 - `claude/routines/`, `claude/scheduled-tasks/` — daily update routine and the scheduled task body
 - `docs/NEXT-MACHINE.md` — full handoff: decisions, links, routine, remaining work, setup order for a new machine
-- `PLAN.md` — original plan and decisions
+- `PLAN.md` — original plan and decisions (see its correction note)
+- `state/last-seen.json` — baseline for the daily routine
+- `scripts/reset-claude.ps1` — first-machine partial reset. Windows only, hardcoded paths. Do not run on another machine.
 
 Runtime data (credentials, session history, auto-memory, plugins, caches) is never stored here. See `.gitignore`.
 
