@@ -29,7 +29,7 @@
 | RTK 0.50.0 | 완료, 훅 동작 확인 |
 | 일일 루틴 `daily-claude-update` | 완료, 수동 실행 1회 성공, 활성(enabled) |
 | 루틴 모델 | 첫 자동 실행은 sonnet-5-5로 확인. UI에서 명시 지정은 사용자가 할 일 |
-| CLI 2.1.294 | 대기, npm 최신이 2.1.293 |
+| Claude Code CLI | npm 최신 2.1.295 (2026-10-09 확인). 머신마다 `claude --version`으로 확인 |
 | Archify | 미설치, 다이어그램 요청 시 |
 | Ponytail | 미설치, 의도적 보류 |
 | 프로젝트 셋업·최적화 | 나중 단계 |
@@ -43,7 +43,7 @@
 각 단계 끝에 확인 방법이 있다. 확인되기 전에 다음 단계로 넘어가지 않는다.
 
 1. Claude Code를 설치하고 로그인한다. 자격 증명은 저장소에 없으므로 새로 로그인해야 한다.
-   - 확인: `claude --version`이 2.1.293 이상.
+   - 확인: `claude --version`이 npm 최신(2026-10-09 기준 2.1.295) 이상.
    - 설치 방법은 공식 문서를 따른다. 첫 컴퓨터(Windows)는 npm으로 설치했다: `npm install -g @anthropic-ai/claude-code@latest` (첫 컴퓨터는 `--prefix`로 `AppData/Roaming/npm`을 지정했다).
 2. 저장소를 받는다. HTTPS 주소이므로 새 컴퓨터에서 GitHub 인증(예: `gh auth login` 또는 자격 증명 관리자)이 먼저 필요하다. private이면 인증 없이는 clone이 안 된다.
    ```bash
@@ -165,8 +165,10 @@ Ponytail (미설치, 의도적 보류):
 
 ## 7. 남은 작업 (순서대로)
 
+0. 결정 대기: `effortLevel`(현재 xhigh, 공식 기본 medium, 권장 high), `explorer` 처리(`omitClaudeMd: true` 추가 또는 내장 `Explore` override). 브랜치 `claude/add-apply-script`의 커밋은 push 전이다. 맥과 Windows Git Bash에서 `scripts/apply.sh`를 한 번씩 실행해 확인한다. RTK는 0.51.0으로 올린다.
+
 1. 루틴 모델을 Sonnet으로 고정 (앱 UI). 첫 자동 실행은 sonnet-5-5로 돌았지만 그것이 UI 설정 때문인지 기본값 때문인지 모른다. UI에서 명시적으로 지정한 뒤, 내일 이후 자동 실행 세션의 모델을 `get_session`으로 다시 확인한다.
-2. CLI 2.1.294: npm에 올라오면 업데이트. 승인 필요. 확인: `claude --version`.
+2. CLI 최신화: 일일 루틴 보고서에 업데이트 명령이 나오면 실행한다. 승인 필요. 확인: `claude --version`.
    ```bash
    npm install -g @anthropic-ai/claude-code@latest
    ```
