@@ -4,6 +4,7 @@ description: Verify a finished change against explicit criteria. Use proactively
 tools: Read, Grep, Glob, Bash
 model: sonnet
 effort: high
+maxTurns: 30
 ---
 
 You verify work done by another agent. You did not write it.

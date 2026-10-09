@@ -102,6 +102,7 @@
 - `statusLine`: `jq`로 `[모델] N% context`를 출력하는 command. `jq` 필요.
 - 제거한 키(공식 settings-reference의 기본값과 같아서 vanilla 기준으로 삭제, 2026-10-09): `autoUpdatesChannel: latest`(미설정 시 latest), `theme: dark`(기본 dark), `enableAllProjectMcpServers: false`(미설정 시 서버마다 승인 요청). 프로젝트 설정이 같은 키를 true로 두면 사용자 설정보다 우선하므로 false를 명시해도 보호가 되지 않는다.
 - `env.ENABLE_PROMPT_CACHING_1H`: 제거함. 공식 문서상 구독 플랜의 메인 대화는 기본이 1시간 TTL이라 중복이고, 이 변수는 서브에이전트·압축 요청까지 1시간으로 올려 쓰기 비용만 늘린다 (짧은 작업에는 손해).
+- `permissions.ask` 10개 (2026-10-09 추가, Bash 5패턴 `git push *`, `git branch -D *`, `git stash drop *`, `git stash clear *`, `rm *` × `rtk ` 짝). "승인 후에만 push, 삭제 전 확인" 규칙을 문장이 아니라 설정으로 강제한다. deny가 먼저 평가되므로 force push는 계속 거부된다. 공식 문서상 ask 규칙은 auto 모드에서도 묻는다.
 - `permissions.deny` 53개 (원래 20개 + 변형 우회 8개 + 같은 Bash 패턴 25개를 `rtk ` 접두어로 복제한 것. 아래 함정 절 참고):
   - `Bash(rm -rf /*)`, `Bash(rm -rf ~*)`, `Bash(rm -rf $HOME*)`, `Bash(rm -rf %USERPROFILE%*)`
   - `Bash(git push --force *)`, `Bash(git push --force)`, `Bash(git push -f *)`, `Bash(git push -f)`
@@ -164,6 +165,7 @@ Ponytail (설치됨, 상시 켜짐):
   3. 모델은 앱의 Scheduled 화면에서 Sonnet으로 지정한다.
   4. 한 번 수동 실행해 보고서가 생기는지 확인한다.
 - 두 컴퓨터에서 같은 루틴을 켜도 된다(2026-10-09 결정). `reports/`는 컴퓨터마다 로컬이라 겹치지 않고 각자 설치 상태를 점검한다. 충돌 지점은 git으로 공유되는 `state/last-seen.json` 하나다: `git pull`이 막히면 `git checkout -- state/last-seen.json` 후 pull한다. 이 파일의 `installed_*` 값은 마지막으로 돌린 컴퓨터 기준이다.
+- 매일 개선 루프(2026-10-09 추가): 루틴이 공식 문서 8페이지의 변경분(`scripts/docs-watch.sh`), 모델 배치의 적합성, 최근 7일 사용 패턴(`scripts/usage-digest.sh`, 집계만 출력)을 보고 근거와 diff가 붙은 제안 P1~P5(하루 최대 5개)를 보고서에 쓴다. 제안은 자동 적용하지 않는다. 사용자가 채팅에서 승인하면 브랜치와 PR로 적용한다. 월요일에는 `claude/CLAUDE.md`를 줄 단위로 점검한다. 제안 이력은 로컬 `reports/proposals-log.md`(open, applied, rejected)에 쌓고, 거절한 제안은 다시 올리지 않는다. 작업 본문(`SKILL.md`)은 얇은 포인터와 하드 리밋만 갖고 단계는 `daily-update.md` 한 곳에서만 정의한다.
 - 루틴 절차(`claude/routines/daily-update.md`): `claude --version` → 공식 변경 로그와 Anthropic 뉴스 확인 → 항목 분류(관련/참고/무시) → 보고서 작성 → `last-seen.json` 갱신. 설치·push·`~/.claude` 수정은 하지 않는다.
 
 ## 7. 남은 작업 (순서대로)
@@ -249,6 +251,7 @@ RTK 절감 (시점별로 값이 다르다):
 - 일반 `rm -rf *`를 deny에 추가하지 않는다. 전부 막으면 명시적으로 요청한 정리도 막힌다. 위험 경로(`/*`, `~*`, `$HOME*`, `%USERPROFILE%*`)만 deny다.
 - `HANDOFF.md`(첫 컴퓨터의 로컬 인계 메모)는 커밋하지 않는다. 내용은 이 문서에 흡수됐다. `.gitignore`에도 없으니 `git add .`로 실수로 올리지 않도록 주의한다.
 - `reports/`는 로컬 전용(`.gitignore`)으로 유지한다.
+- 오케스트레이션 규칙(2026-10-09): 위임 기준, 브리프 템플릿, 동시 3개 상한, reviewer에는 기준과 파일 목록만, 서브에이전트 보고는 주장으로 취급. `worker` 에이전트 추가(기능+테스트 단위). 역할별(planner, coder, tester) 에이전트는 만들지 않는다.
 - Ponytail은 상시 사용한다(2026-10-09 변경, 이전 결정은 "설치하지 않는다"). 이유는 사용자 선호이며, 비용은 세션당 약 641토큰과 Node 훅이다. Archify는 요청 시에만, 검토 후 승인받고 설치한다(Mac은 2026-10-09 설치됨).
 - 일일 루틴은 두 컴퓨터(Mac, 데스크탑)에서 모두 돌린다. 이전 결정("한쪽만")을 바꿨다.
 - 루틴 모델은 첫 실행만 Haiku, 이후 Sonnet.
@@ -267,6 +270,8 @@ RTK 절감 (시점별로 값이 다르다):
 - RTK 훅과 deny 규칙: 공식 문서상 권한 규칙은 훅이 돌려준 입력을 기준으로 평가되고, RTK는 Bash 명령을 `git status` -> `rtk git status`로 다시 쓴다. 2026-10-09 시뮬레이션 QA(RTK 대신 같은 방식으로 `rtk ` 접두어를 붙이는 모의 훅과 스텁 `rtk`)에서 원래 deny 패턴은 `rtk git push --force origin main`, `rtk git reset --hard HEAD`, `rtk rm -fr ~/x`를 막지 못했고 명령이 실제 실행됐다(훅이 `allow`를 돌려주든 안 주든 동일). Bash deny 패턴 25개를 `rtk ` 접두어로 복제해 53개로 늘린 뒤 같은 시험에서 전부 차단됐고, 대조군 `git status`는 정상 실행됐다. 실제 RTK 바이너리로는 아직 시험하지 못했다(컨테이너에서 `rtk-ai/rtk` 접근 불가). RTK가 설치된 머신에서 `scripts/qa-deny.sh`를 한 번 실행해 전부 PASS인지 확인한다(스크래치 저장소만 쓴다). 이 스크립트는 모의 훅으로 검증했다: 현재 설정은 PASS, 복제 패턴이 없던 이전 설정(`0d28f82`)은 5건 FAIL. 스크립트는 먼저 CLI 없이 Bash deny 패턴마다 `rtk ` 짝이 있는지 정적으로 확인하고(한쪽만 추가하면 FAIL), 이어서 push --force, reset --hard, rm, clean, checkout --, restore 계열과 대조군 `git status`를 실제로 시험한다.
 - `state/last-seen.json`은 루틴이 쓰는 추적 파일이다. 루틴이 도는 머신에서 이 파일이 수정된 채로 `git pull`하면, 같은 줄을 바꾼 커밋(PR #1이 이 파일에 키를 추가했다)과 부딪혀 pull이 중단된다. pull 전에 `git checkout -- state/last-seen.json`으로 로컬 변경을 버리면 된다(루틴이 다음 실행에서 다시 쓴다).
 - 서브에이전트는 설정된 advisor를 상속한다(공식 advisor 문서). 2026-10-09 다단계 작업 시험에서 reviewer 2회가 자동 위임됐고 Opus 입력 81.7k토큰이 쓰여 전체 비용(약 0.94 USD)의 약 47%를 차지했다. 메인에는 advisor 호출 기록이 없어 Opus 사용은 reviewer 쪽으로 보이지만 에이전트별로 직접 귀속되지는 않았다(추정).
+- 자율 적용은 하지 않는다(2026-10-09 결정): "매일 개선"은 제안까지 자동이고 적용은 승인 후다. 이유는 전역 규칙(변경은 브랜치와 PR, 머지는 사람)과 설정을 스스로 바꾸는 루프의 위험이다. 필요하면 나중에 "로컬 브랜치에 커밋까지"로 넓힐 수 있다.
+- 정정(2026-10-09): Read deny 규칙은 Claude가 인식하는 Bash 파일 명령(`cat`, `head`, `tail`, `sed`, `tee`)과 리다이렉션에도 적용된다(공식 permissions 문서). `cat .env`는 막힌다. 막히지 않는 것은 `grep -r`, 파이썬·Node 스크립트 같은 간접 접근이며, 이는 패턴이 아니라 샌드박스로 막는다. 그래서 `.env`용 Bash deny는 추가하지 않는다.
 - deny/ask 규칙은 보안 경계가 아니다(공식 permissions 문서). `/bin/rm -rf`, `bash -c '...'`, `git -C . push`처럼 다른 형태의 호출은 못 막는다. 명령 텍스트와 무관한 강제는 샌드박스(`/sandbox`)로 한다. 샌드박스는 기본 꺼짐이고 macOS, Linux, WSL2에서만 동작하며 네이티브 Windows에서는 명령이 샌드박스 없이 실행된다.
 - 공식 비용 문서 권장 중 미적용: 미사용 MCP 서버 비활성화(`/mcp`, 사용자 조치), 프롬프트 제안 끄기(배경 토큰 소량, 선택). 상태줄 컨텍스트 표시는 적용함(`jq` 필요).
 

@@ -13,19 +13,18 @@ Applies to every project on this machine. Project `CLAUDE.md` files add to these
 - Never declare completion from the model's own judgment. Confirm with a command result, a test, or a source check, and report what could not be verified.
 
 ## Orchestration
-- Start with a single agent. Split work only when the parts are independent or the output is large and mostly irrelevant to the main thread.
+- Start with a single agent. Delegate only when the part does not block the main thread's next step, or its output is large and mostly irrelevant to it. Otherwise work inline.
 - Split by context boundary (a feature with its tests), not by role (planner, coder, tester).
-- Delegate only when the part does not block the main thread's next step, or its output is large and mostly irrelevant. Otherwise work inline.
 - A delegate does not see this conversation. Brief it with: Task (one sentence), Files (paths it needs), Return format (what, how long), Done criteria (checkable by a command or a file read), Out of scope.
 - At most 3 delegates at once. Each owns one unit: a feature with its tests (`worker`), one search question (`explorer`), or one verification (`reviewer`).
 - Give the reviewer the criteria and the changed file list only, never the author's reasoning or a verdict to confirm.
 - A delegate's report is a claim. Check the evidence it cites before relaying it as done.
-- Model roles: the main session runs Sonnet. Opus is the configured advisor; consult it before committing to an approach, on a recurring error, and before declaring a task done. High-volume, well-defined subagent tasks run on Haiku.
+- Opus is the configured advisor; consult it before committing to an approach, on a recurring error, and before declaring a task done. High-volume, well-defined subagent tasks run on Haiku.
 - Verification is done by a separate reviewer subagent with explicit criteria. The author does not verify its own output.
 - Retry limit: two attempts on the same error. Then stop, state the exact error, and wait for the user.
 
 ## Safety
-- Never read or commit `.credentials*` or `.env*`.
+- Never commit `.credentials*` or `.env*`.
 - Before overwriting or deleting, show the target and get confirmation.
 - Publish, push, or send anything outward only after approval.
 

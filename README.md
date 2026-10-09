@@ -11,7 +11,9 @@ Source of truth for the global Claude Code setup on this machine (`~/.claude`).
 - `docs/NEXT-MACHINE.md` — full handoff: decisions, links, routine, remaining work, setup order for a new machine
 - `state/last-seen.json` — baseline for the daily routine
 - `scripts/apply.sh` — copies `claude/` into `~/.claude/` with a backup
-- `scripts/qa-deny.sh` — checks that the deny rules still block dangerous commands on this machine, with hooks such as rtk active
+- `scripts/docs-watch.sh` — daily diff of eight official Claude Code docs pages (best practices, memory, sub-agents, permissions, costs, model-config, hooks, settings); cache in `reports/` (gitignored)
+- `scripts/usage-digest.sh` — aggregate-only digest of local session logs (models, tools, subagents, tokens, errors); never prints message text
+- `scripts/qa-deny.sh` — checks that the deny and ask rules still stop dangerous commands on this machine, with hooks such as rtk active (`--static` runs only the rtk-twin check)
 
 Runtime data (credentials, session history, auto-memory, plugins, caches) is never stored here. See `.gitignore`.
 
@@ -23,8 +25,8 @@ Scope: local machines only. Cloud sessions read the project's own `.claude/`, no
 
 ## Verifying
 
-Run `bash scripts/qa-deny.sh` on each machine after `apply.sh`. It first checks without the CLI that every Bash deny pattern has an `rtk ` twin, then needs the `claude` CLI, uses a throwaway repo with no remote and the haiku model, and prints PASS or FAIL per command. Undo an apply by copying files back from `~/.claude-backup-<timestamp>/`.
+Run `bash scripts/qa-deny.sh` on each machine after `apply.sh`. It first checks without the CLI that every Bash deny and ask pattern has an `rtk ` twin (`--static` stops here), then needs the `claude` CLI, uses a throwaway repo with no remote and the haiku model, and prints PASS or FAIL per command. Undo an apply by copying files back from `~/.claude-backup-<timestamp>/`.
 
 ## Status
 
-Applied on the first machine (2026-10-09). Not yet run on Mac or Windows Git Bash. Continue on another machine with `docs/NEXT-MACHINE.md`.
+Applied and verified on the first machine (Windows) and on a Mac (2026-10-09): `apply.sh`, `qa-deny.sh`, the daily routine and Ponytail. Not yet run on Windows Git Bash since the Ponytail and orchestration changes. Continue on another machine with `docs/NEXT-MACHINE.md`.
