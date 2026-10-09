@@ -6,7 +6,7 @@ End-to-end order for a machine and a project. Sources: Claude Code docs (best-pr
 
 | Layer | What | Where |
 |---|---|---|
-| Always on, every machine | RTK hook, Ponytail plugin, permissions (deny, ask, bypass mode disabled), short global `CLAUDE.md`, status line, agents `explorer` `reviewer` `worker`, daily routine | this repo, applied to `~/.claude` |
+| Always on, every machine | RTK hook, Ponytail plugin, permissions (deny and ask rules, default mode bypassPermissions), short global `CLAUDE.md`, status line, agents `explorer` `reviewer` `worker`, daily routine | this repo, applied to `~/.claude` |
 | On demand | skill `orchestrate` (description match, or `/orchestrate`), skill `project-setup` (manual, `/project-setup`), Superpowers plugin in project or local scope only, AO as an external app | skills, plugin scope, the user |
 | Per project, once | project `CLAUDE.md`, path-scoped rules, verification command, project permissions | the project's `.claude/` |
 
@@ -77,16 +77,13 @@ Habits: `/clear` between unrelated tasks; after two failed corrections on one is
 - After any change to permissions or hooks: `bash scripts/verify.sh --full` on every machine where RTK is installed.
 - Edit `claude/` in this repo, never `~/.claude` directly.
 
-## Using AO with bypass permissions (temporary)
+## Permission mode: bypassPermissions by default
 
-`permissions.disableBypassPermissionsMode: "disable"` stays on by default: bypass mode ignores every deny and ask rule, and AO can start a worker with `--permission-mode bypassPermissions` (`docs/NEXT-MACHINE.md` section 13). When you decide to run AO in bypass mode:
+The default mode is `bypassPermissions` (decision 2026-10-10). Per the permission-modes doc, deny rules apply in every mode including bypass, explicit ask rules and `rm`/`rmdir` on critical paths still prompt, and allow rules have no effect. So `permissions.deny` and `permissions.ask` in `claude/settings.json` are the guard. `verify.sh` fails when `defaultMode` is not `bypassPermissions`, when a bypass lock is present, or when `deny` or `ask` is missing or empty.
 
-1. Edit `~/.claude/settings.json` yourself and delete `permissions.disableBypassPermissionsMode`. Do not edit `claude/settings.json`.
-2. In AO, choose the bypass permission option for the worker (it starts `claude` with `--permission-mode bypassPermissions`).
-3. While it is off, any session started in bypass mode ignores the deny and ask rules. `verify.sh --live` reports a FAIL because `~/.claude/settings.json` now differs from `claude/settings.json` (generic drift, not a lock-specific check). That FAIL is expected during the AO run.
-4. When you finish, run `bash scripts/apply.sh`. It restores the lock and warns before overwriting a differing `settings.json`. Then run `bash scripts/verify.sh --live`; the goal is 0 FAIL.
-
-Do not commit the unlocked state. If bypass becomes the permanent choice, change the repo rule in a PR: `claude/settings.json`, the check in `scripts/verify.sh`, and `docs/NEXT-MACHINE.md` section 13 together.
+- `defaultMode: "bypassPermissions"` takes effect only from user settings (`~/.claude/settings.json`, written by `apply.sh`), not from a project `.claude/settings.json`. Claude Desktop also needs the "Allow bypass permissions mode" toggle.
+- An AO worker started with `--permission-mode bypassPermissions` falls under the same deny and ask rules. This is the documented behavior and is not measured on this machine; check it once with a harmless denied command and record the result in `docs/NEXT-MACHINE.md`.
+- To go back to prompts, change `permissions.defaultMode` in `claude/settings.json` and the check in `scripts/verify.sh` in one PR, then run `bash scripts/apply.sh`.
 
 ## Not verified
 
