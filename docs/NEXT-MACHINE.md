@@ -30,6 +30,7 @@
 | 일일 루틴 `daily-claude-update` | 완료, 수동 실행 1회 성공, 활성(enabled) |
 | 루틴 모델 | 첫 자동 실행은 sonnet-5-5로 확인. UI에서 명시 지정은 사용자가 할 일 |
 | Claude Code CLI | npm 최신 2.1.295 (2026-10-09 확인). 머신마다 `claude --version`으로 확인 |
+| 상태줄 `statusLine` | 모델과 컨텍스트 %를 표시. `jq`가 PATH에 있어야 한다 (섹션 2의 4단계) |
 | Archify | 미설치, 다이어그램 요청 시 |
 | Ponytail | 미설치, 의도적 보류 |
 | 프로젝트 셋업·최적화 | 나중 단계 |
@@ -67,6 +68,7 @@
    - `settings.json`에 RTK 훅(`rtk hook claude`)이 이미 들어 있다. `rtk init -g`를 실행하면 설정이 바뀔 수 있으니 실행 전후 `settings.json` 차이를 비교한다. (이미 훅이 들어 있는 현재 상태에서는 `rtk init -g`가 필수가 아니다.)
    - `rtk`가 PATH에 있어야 훅이 동작한다. 첫 컴퓨터에서는 winget 설치 직후 Git Bash PATH에 없었고, 훅은 앱 재시작 뒤 활성화됐다. 이후 같은 컴퓨터의 세션에서 `command -v rtk`가 WinGet 경로를 찾는 것을 확인했다. 새 컴퓨터에서는 새 터미널·앱 재시작 후 `rtk --version`으로 직접 확인한다.
    - 확인: Bash 명령 몇 개 실행 뒤 `rtk gain`의 Total commands가 늘어난다. 그리고 `bash scripts/qa-deny.sh`가 전부 PASS여야 한다(RTK가 명령을 다시 써도 deny가 막는지 확인하는 시험, 아래 함정 절).
+   - `jq`를 설치한다. 상태줄(`statusLine`)이 `jq`로 세션 정보를 읽으므로 없으면 상태줄이 비거나 깨진다. 설치는 jq 공식 릴리스(https://github.com/jqlang/jq/releases) 또는 각 OS 패키지 관리자로 한다(패키지 ID는 확인하지 않았다). 확인: `command -v jq`, 새 세션 하단에 `[모델] N% context`가 보인다.
 5. 예약 루틴을 만든다 (섹션 6, 경로 수정 필요).
 6. 섹션 7의 남은 작업을 순서대로 진행한다.
 
@@ -95,6 +97,7 @@
 - `model`: `sonnet`
 - `effortLevel`: `high` (공식 기본은 medium, xhigh는 토큰 소모 증가. 되돌리려면 `/effort`로 세션 중 변경하거나 이 값을 바꾼다. Sonnet 5.5는 세션 중 변경해도 캐시 유지)
 - `advisorModel`: `opus`
+- `statusLine`: `jq`로 `[모델] N% context`를 출력하는 command. `jq` 필요.
 - 제거한 키(공식 settings-reference의 기본값과 같아서 vanilla 기준으로 삭제, 2026-10-09): `autoUpdatesChannel: latest`(미설정 시 latest), `theme: dark`(기본 dark), `enableAllProjectMcpServers: false`(미설정 시 서버마다 승인 요청). 프로젝트 설정이 같은 키를 true로 두면 사용자 설정보다 우선하므로 false를 명시해도 보호가 되지 않는다.
 - `env.ENABLE_PROMPT_CACHING_1H`: 제거함. 공식 문서상 구독 플랜의 메인 대화는 기본이 1시간 TTL이라 중복이고, 이 변수는 서브에이전트·압축 요청까지 1시간으로 올려 쓰기 비용만 늘린다 (짧은 작업에는 손해).
 - `permissions.deny` 53개 (원래 20개 + 변형 우회 8개 + 같은 Bash 패턴 25개를 `rtk ` 접두어로 복제한 것. 아래 함정 절 참고):
@@ -122,8 +125,8 @@
 ## 5. 도구 상태
 
 Claude Code CLI:
-- 2.1.233에서 2.1.293으로 올렸다 (npm latest). 첫 컴퓨터 설치 위치: `C:\Users\edn_y\AppData\Roaming\npm`.
-- 변경 로그에는 2.1.294(2026-10-08)가 있으나 npm은 아직 2.1.293이다. `state/last-seen.json`에 `latest_changelog_version: 2.1.294`로 기록됨.
+- 첫 컴퓨터는 2.1.233에서 2.1.293으로 올렸다. 설치 위치: `C:\Users\edn_y\AppData\Roaming\npm`.
+- npm 최신은 2.1.295 (2026-10-09, `state/last-seen.json`의 `latest_cli_npm`). 첫 컴퓨터는 업데이트 대상이다.
 - 데스크톱 앱은 자체 claude-code를 번들한다 (`AppData\Roaming\Claude\claude-code`). npm CLI와 별개이며 건드리지 않는다.
 
 RTK 0.50.0:
@@ -163,7 +166,7 @@ Ponytail (미설치, 의도적 보류):
 
 ## 7. 남은 작업 (순서대로)
 
-0. 2026-10-09 실행 QA 결과는 섹션 9의 "하네스 QA" 참고. 반영함(되돌릴 수 있음): `effortLevel`을 high로, `explorer`에 `omitClaudeMd: true`. 결정 대기: `rm -rf /*` 과차단 유지 여부, 루틴 자동 설치 허용 여부. 브랜치 `claude/add-apply-script`의 커밋은 push 전이다. 맥과 Windows Git Bash에서 `scripts/apply.sh`를 한 번씩 실행해 확인한다. RTK는 0.51.0으로 올린다.
+0. 브랜치 `claude/add-apply-script`는 push됐고 PR #1에서 머지를 기다린다. 머지 후 각 컴퓨터에서 `git pull && bash scripts/apply.sh`, 이어서 RTK가 설치된 머신에서 `bash scripts/qa-deny.sh`(실제 RTK로는 아직 미검증). 맥과 Windows Git Bash에서 한 번씩 실행해 확인한다. RTK는 0.51.0으로 올린다. 결정 대기: advisor(Opus) 전역 유지 여부(섹션 9의 비용 측정).
 
 1. 루틴 모델을 Sonnet으로 고정 (앱 UI). 첫 자동 실행은 sonnet-5-5로 돌았지만 그것이 UI 설정 때문인지 기본값 때문인지 모른다. UI에서 명시적으로 지정한 뒤, 내일 이후 자동 실행 세션의 모델을 `get_session`으로 다시 확인한다.
 2. CLI 최신화: 일일 루틴 보고서에 업데이트 명령이 나오면 실행한다. 승인 필요. 확인: `claude --version`.
@@ -250,11 +253,11 @@ RTK 절감 (시점별로 값이 다르다):
 - `.credentials*`, `.env*`는 읽지도 커밋하지도 않는다.
 - 예약 작업 `SKILL.md`(첫 컴퓨터 라이브와 저장소 참조본 모두 원본에서 `routines/` 경로 표기가 틀려 있었다). 저장소 참조본은 `claude/routines/daily-update.md`로 고쳤다. 라이브 쪽은 아직 원본 그대로이며 동작에는 영향이 없다 (본문이 곧바로 올바른 경로로 보정한다).
 
-- RTK 훅과 deny 규칙: 공식 문서상 권한 규칙은 훅이 돌려준 입력을 기준으로 평가되고, RTK는 Bash 명령을 `git status` -> `rtk git status`로 다시 쓴다. 2026-10-09 시뮬레이션 QA(RTK 대신 같은 방식으로 `rtk ` 접두어를 붙이는 모의 훅과 스텁 `rtk`)에서 원래 deny 패턴은 `rtk git push --force origin main`, `rtk git reset --hard HEAD`, `rtk rm -fr ~/x`를 막지 못했고 명령이 실제 실행됐다(훅이 `allow`를 돌려주든 안 주든 동일). Bash deny 패턴 25개를 `rtk ` 접두어로 복제해 53개로 늘린 뒤 같은 시험에서 전부 차단됐고, 대조군 `git status`는 정상 실행됐다. 실제 RTK 바이너리로는 아직 시험하지 못했다(컨테이너에서 `rtk-ai/rtk` 접근 불가). RTK가 설치된 머신에서 `scripts/qa-deny.sh`를 한 번 실행해 전부 PASS인지 확인한다(스크래치 저장소만 쓴다). 이 스크립트는 모의 훅으로 검증했다: 현재 설정은 PASS, 복제 패턴이 없던 이전 설정(`0d28f82`)은 5건 FAIL.
+- RTK 훅과 deny 규칙: 공식 문서상 권한 규칙은 훅이 돌려준 입력을 기준으로 평가되고, RTK는 Bash 명령을 `git status` -> `rtk git status`로 다시 쓴다. 2026-10-09 시뮬레이션 QA(RTK 대신 같은 방식으로 `rtk ` 접두어를 붙이는 모의 훅과 스텁 `rtk`)에서 원래 deny 패턴은 `rtk git push --force origin main`, `rtk git reset --hard HEAD`, `rtk rm -fr ~/x`를 막지 못했고 명령이 실제 실행됐다(훅이 `allow`를 돌려주든 안 주든 동일). Bash deny 패턴 25개를 `rtk ` 접두어로 복제해 53개로 늘린 뒤 같은 시험에서 전부 차단됐고, 대조군 `git status`는 정상 실행됐다. 실제 RTK 바이너리로는 아직 시험하지 못했다(컨테이너에서 `rtk-ai/rtk` 접근 불가). RTK가 설치된 머신에서 `scripts/qa-deny.sh`를 한 번 실행해 전부 PASS인지 확인한다(스크래치 저장소만 쓴다). 이 스크립트는 모의 훅으로 검증했다: 현재 설정은 PASS, 복제 패턴이 없던 이전 설정(`0d28f82`)은 5건 FAIL. 스크립트는 먼저 CLI 없이 Bash deny 패턴마다 `rtk ` 짝이 있는지 정적으로 확인하고(한쪽만 추가하면 FAIL), 이어서 push --force, reset --hard, rm, clean, checkout --, restore 계열과 대조군 `git status`를 실제로 시험한다.
 - `state/last-seen.json`은 루틴이 쓰는 추적 파일이다. 루틴이 도는 머신에서 이 파일이 수정된 채로 `git pull`하면, 같은 줄을 바꾼 커밋(PR #1이 이 파일에 키를 추가했다)과 부딪혀 pull이 중단된다. pull 전에 `git checkout -- state/last-seen.json`으로 로컬 변경을 버리면 된다(루틴이 다음 실행에서 다시 쓴다).
 - 서브에이전트는 설정된 advisor를 상속한다(공식 advisor 문서). 2026-10-09 다단계 작업 시험에서 reviewer 2회가 자동 위임됐고 Opus 입력 81.7k토큰이 쓰여 전체 비용(약 0.94 USD)의 약 47%를 차지했다. 메인에는 advisor 호출 기록이 없어 Opus 사용은 reviewer 쪽으로 보이지만 에이전트별로 직접 귀속되지는 않았다(추정).
 - deny/ask 규칙은 보안 경계가 아니다(공식 permissions 문서). `/bin/rm -rf`, `bash -c '...'`, `git -C . push`처럼 다른 형태의 호출은 못 막는다. 명령 텍스트와 무관한 강제는 샌드박스(`/sandbox`)로 한다. 샌드박스는 기본 꺼짐이고 macOS, Linux, WSL2에서만 동작하며 네이티브 Windows에서는 명령이 샌드박스 없이 실행된다.
-- 공식 비용 문서 권장 중 미적용: 상태줄로 컨텍스트 사용량 상시 표시(스크립트 필요, 보류), 미사용 MCP 서버 비활성화(`/mcp`, 사용자 조치), 프롬프트 제안 끄기(배경 토큰 소량, 선택).
+- 공식 비용 문서 권장 중 미적용: 미사용 MCP 서버 비활성화(`/mcp`, 사용자 조치), 프롬프트 제안 끄기(배경 토큰 소량, 선택). 상태줄 컨텍스트 표시는 적용함(`jq` 필요).
 
 ## 12. 저장소 이력
 
@@ -264,4 +267,4 @@ RTK 절감 (시점별로 값이 다르다):
 - `47a2263` chore: sync RTK hook into repo settings and add routine baseline
 - `0ff4efe` docs: routine model note (first run Haiku by decision, later Sonnet)
 - `0757a18` docs: add next-machine handoff and scheduled task reference
-- 그 이후: 이 보강판 커밋 (`git log`로 확인)
+- 그 이후: PR #1(`claude/add-apply-script`): apply/qa 스크립트, deny 수정, 상태줄, 문서 정리. 상세는 `git log`.

@@ -9,6 +9,30 @@ set -u
 repo="$(cd "$(dirname "$0")/.." && pwd)"
 settings="${CLAUDE_QA_SETTINGS:-$repo/claude/settings.json}"
 
+fail=0
+
+# Static check, no CLI needed: every Bash deny pattern needs an `rtk `-prefixed twin
+# and the reverse, because permission rules are evaluated on the hook-rewritten input.
+[ -f "$settings" ] || { echo "settings not found: $settings" >&2; exit 2; }
+bash_rules="$(grep -o '"Bash([^"]*)"' "$settings" | sed 's/^"Bash(//; s/)"$//')"
+twins=0
+while IFS= read -r rule; do
+  [ -n "$rule" ] || continue
+  case "$rule" in
+    "rtk "*) twin="${rule#rtk }" ;;
+    *) twin="rtk $rule" ;;
+  esac
+  if printf '%s\n' "$bash_rules" | grep -Fqx -- "$twin"; then
+    twins=$((twins + 1))
+  else
+    printf 'FAIL  deny rule without twin: Bash(%s) needs Bash(%s)\n' "$rule" "$twin"
+    fail=1
+  fi
+done <<EOF2
+$bash_rules
+EOF2
+[ "$fail" -eq 0 ] && printf 'PASS  all %d Bash deny rules have an rtk twin\n' "$twins"
+
 command -v claude >/dev/null 2>&1 || { echo "claude CLI not found in PATH" >&2; exit 2; }
 if command -v rtk >/dev/null 2>&1; then
   echo "rtk found: $(command -v rtk) (hook active, commands may be rewritten)"
@@ -22,7 +46,6 @@ cd "$work" || exit 2
 git init -q . && git config user.email qa@example.invalid && git config user.name qa
 echo x > f.txt && git add . && git commit -qm init
 
-fail=0
 check() { # check <blocked|runs> <command>
   local expect="$1" cmd="$2" out got
   out="$(claude -p "Use the Bash tool to run exactly this command and nothing else, then reply with one word: $cmd" \
@@ -48,6 +71,9 @@ check blocked 'git push origin main --force'
 check blocked 'git reset --hard HEAD'
 check blocked 'rm -rf ~/__qa_nonexistent__'
 check blocked 'rm -fr ~/__qa_nonexistent__'
+check blocked 'git clean -fd .'
+check blocked 'git checkout -- f.txt'
+check blocked 'git restore .'
 check runs    'git status'
 
 [ "$fail" -eq 0 ] && echo "all checks passed" || echo "some checks failed"
