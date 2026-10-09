@@ -24,6 +24,17 @@ for item in $items; do
 done
 [ -d "$backup" ] && echo "backup: $backup"
 
+# settings.json is replaced as a whole: say so when the live copy has changes the repo does not (for example
+# enabledPlugins written by "claude plugin install"). Key order alone is not a difference.
+if [ -f "$dest/settings.json" ] && ! cmp -s "$src/settings.json" "$dest/settings.json"; then
+  if command -v jq >/dev/null 2>&1      && [ "$(jq -S . "$src/settings.json" 2>/dev/null)" = "$(jq -S . "$dest/settings.json" 2>/dev/null)" ]; then
+    :
+  else
+    echo "warning: $dest/settings.json differs from claude/settings.json and is about to be overwritten." >&2
+    echo "  Keep any live change you want by moving it into claude/settings.json first; the old copy is in $backup." >&2
+  fi
+fi
+
 for item in $items; do
   if [ -d "$src/$item" ]; then
     mkdir -p "$dest/$item"
