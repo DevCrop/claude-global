@@ -2,6 +2,7 @@
 """Local live dashboard for the global Claude setup. Read-only, stdlib only, 127.0.0.1 only.
 
 Run: python3 scripts/dashboard/server.py [--port 8787]
+Optional: PROJECT_DIRS or state/projects.txt lists project roots; the "프로젝트 셋업" dialog shows only file presence and line counts.
 Reads: git history, gh PR list, scripts/verify.sh --live, reports/*.md, claude/settings.json,
 and the tool-call names and timestamps of the newest session log in ~/.claude/projects.
 It parses the log tail in memory but emits only tool names, times, a file basename, and a command's first word plus a plain subcommand
@@ -172,6 +173,45 @@ def session_events(limit=120):
     return {"session": f.stem[:8], "mtime": datetime.fromtimestamp(f.stat().st_mtime, timezone.utc).isoformat(), "events": events[-limit:]}
 
 
+def project_dirs():
+    """Project roots to inspect: PROJECT_DIRS (path-separated) or state/projects.txt, one path per line."""
+    raw = os.environ.get("PROJECT_DIRS", "")
+    paths = [p for p in raw.split(os.pathsep) if p.strip()]
+    f = ROOT / "state" / "projects.txt"
+    if not paths and f.is_file():
+        paths = [l.strip() for l in f.read_text(encoding="utf-8", errors="replace").splitlines() if l.strip() and not l.startswith("#")]
+    return [Path(p).expanduser() for p in paths]
+
+
+def project_setup(d):
+    """Setup facts of one project as booleans and counts. File contents never leave this function."""
+    def lines(p):
+        try:
+            return p.read_text(encoding="utf-8", errors="replace").splitlines()
+        except Exception:
+            return []
+    agents, claude = d / "AGENTS.md", d / "CLAUDE.md"
+    cl = lines(claude)
+    first = next((l.strip() for l in cl if l.strip()), "")
+    try:
+        cfg = json.loads((d / ".claude" / "settings.json").read_text(encoding="utf-8"))
+    except Exception:
+        cfg = None
+    perm = (cfg or {}).get("permissions", {})
+    gi = "\n".join(lines(d / ".gitignore"))
+    rules = list((d / ".claude" / "rules").glob("*.md")) if (d / ".claude" / "rules").is_dir() else []
+    return {"name": d.name, "found": d.is_dir(),
+            "agents": agents.is_file(), "agentsLines": len(lines(agents)),
+            "claude": claude.is_file(), "claudeLines": len(cl), "imports": first.startswith("@AGENTS.md"),
+            "settings": cfg is not None, "denyEnv": any(".env" in str(r) for r in perm.get("deny", [])),
+            "defaultMode": "defaultMode" in perm, "rules": len(rules),
+            "gitignore": "CLAUDE.local.md" in gi and "settings.local.json" in gi}
+
+
+def projects():
+    return [project_setup(d) for d in project_dirs()]
+
+
 def state():
     return {
         "now": datetime.now(timezone.utc).isoformat(),
@@ -181,6 +221,7 @@ def state():
         "settings": cached("settings", 5, settings),
         "reports": cached("reports", 30, reports),
         "activity": session_events(),
+        "projects": cached("projects", 10, projects),
     }
 
 

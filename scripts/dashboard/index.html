@@ -130,6 +130,10 @@ dialog .dh { display: flex; justify-content: space-between; align-items: center;
 dialog h2 { margin: 0; font-size: var(--t-lg); }
 dialog pre { margin: 0; font: 400 var(--t-xs)/1.6 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 56vh; overflow: auto; }
 dialog pre .l-FAIL { color: var(--bad); font-weight: 700; } dialog pre .l-WARN { color: var(--warn); } dialog pre .l-PASS { color: var(--muted); }
+.proj { grid-template-columns: minmax(90px, 1.2fr) repeat(5, minmax(0, 1fr)); }
+.proj .nm { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.proj.head { color: var(--faint); font-size: var(--t-xs); }
+@media (max-width: 640px) { .proj { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .proj.head { display: none; } }
 .tabs { display: flex; gap: var(--s2); margin-bottom: var(--s3); }
 .tabs .btn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
 /* stacked layout: must come after the panel rules above so it wins the cascade */
@@ -153,6 +157,7 @@ dialog pre .l-FAIL { color: var(--bad); font-weight: 700; } dialog pre .l-WARN {
     <div class="meta">
       <span class="badge accent" id="mode">mode —</span>
       <span class="badge ok live" id="live"><span class="pip"></span><span id="liveText">연결 중</span></span>
+      <button class="btn" id="projBtn" type="button">프로젝트 셋업</button>
       <button class="btn" id="logsBtn" type="button">전체 로그</button>
       <button class="btn" id="theme" type="button">테마</button>
     </div>
@@ -191,6 +196,12 @@ dialog pre .l-FAIL { color: var(--bad); font-weight: 700; } dialog pre .l-WARN {
 </div>
 <div id="tip" role="tooltip"></div>
 
+<dialog id="pdlg">
+  <div class="dh"><h2>프로젝트 셋업</h2><button class="btn" id="pdlgClose" type="button">닫기</button></div>
+  <div class="rows" id="projRows"></div>
+  <p class="muted" id="projHint" style="font-size:var(--t-xs)"></p>
+</dialog>
+
 <dialog id="dlg">
   <div class="dh"><h2>전체 로그</h2><button class="btn" id="dlgClose" type="button">닫기</button></div>
   <div class="tabs"><button class="btn" id="tabV" type="button" aria-pressed="true">verify --live</button><button class="btn" id="tabR" type="button" aria-pressed="false">루틴 보고서</button></div>
@@ -216,6 +227,24 @@ dialog pre .l-FAIL { color: var(--bad); font-weight: 700; } dialog pre .l-WARN {
   const dlg = $("dlg");
   $("logsBtn").onclick = () => { fillDlg(); dlg.showModal(); };
   $("dlgClose").onclick = () => dlg.close();
+  const pdlg = $("pdlg");
+  $("projBtn").onclick = () => { fillProj(); pdlg.showModal(); }; $("pdlgClose").onclick = () => pdlg.close();
+  const bd = (tone, txt) => el("span", "badge " + tone, txt);
+  function fillProj() {
+    const list = (last && last.projects) || [];
+    $("projHint").textContent = list.length ? "읽기 전용: 파일 유무와 줄 수만 읽습니다. 내용은 보내지 않습니다." : "추적할 프로젝트가 없습니다. state/projects.txt에 경로를 한 줄씩 적거나 PROJECT_DIRS를 지정하세요.";
+    const head = el("div", "row proj head"); ["프로젝트", "지침", "Claude 연결", "settings", "규칙", "gitignore"].forEach((t) => head.append(el("span", null, t)));
+    $("projRows").replaceChildren(...(list.length ? [head, ...list.map((p) => {
+      const r = el("div", "row proj"); r.append(el("span", "nm", p.name));
+      if (!p.found) { r.append(bd("bad", "경로 없음")); return r; }
+      r.append(p.agents ? bd("ok", "AGENTS " + p.agentsLines) : bd("info", "AGENTS 없음"));
+      r.append(!p.claude ? bd(p.agents ? "ok" : "warn", p.agents ? "AGENTS 직접" : "지침 없음") : p.imports ? bd("ok", "@AGENTS") : p.agents ? bd("bad", "import 없음") : bd(p.claudeLines > 200 ? "warn" : "ok", "CLAUDE " + p.claudeLines));
+      r.append(!p.settings ? bd("warn", "없음") : p.defaultMode ? bd("bad", "defaultMode") : p.denyEnv ? bd("ok", ".env deny") : bd("warn", "deny 없음"));
+      r.append(bd(p.rules ? "info" : "", p.rules + "개"));
+      r.append(p.gitignore ? bd("ok", "OK") : bd("warn", "누락"));
+      return r;
+    })] : []));
+  }
   $("tabV").onclick = () => { tab = "v"; fillDlg(); }; $("tabR").onclick = () => { tab = "r"; fillDlg(); };
   function fillDlg() {
     $("tabV").setAttribute("aria-pressed", tab === "v"); $("tabR").setAttribute("aria-pressed", tab === "r");
@@ -355,6 +384,7 @@ dialog pre .l-FAIL { color: var(--bad); font-weight: 700; } dialog pre .l-WARN {
     if (!rows.length) { const r = el("div", "row chk"); r.append(badge("ok", "PASS"), el("span", "t", "검증 " + v.PASS + "개 통과, 알림 없음")); rows.push(r); }
     $("checks").replaceChildren(...rows);
     if (dlg.open) fillDlg();
+    if (pdlg.open) fillProj();
   }
 
   async function tick() {
