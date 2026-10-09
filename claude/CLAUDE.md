@@ -16,7 +16,7 @@ Applies to every project on this machine. Project `CLAUDE.md` files add to these
 - Start with a single agent. Split work only when the parts are independent or the output is large and mostly irrelevant to the main thread.
 - Split by context boundary (a feature with its tests), not by role (planner, coder, tester).
 - Delegate with a concrete task, the expected return format, and the success criteria.
-- Subagent model roles: coordination and final judgment on Opus; high-volume, well-defined subtasks on Haiku; general implementation on Sonnet.
+- Model roles: the main session runs Sonnet. Opus is the configured advisor; consult it before committing to an approach, on a recurring error, and before declaring a task done. High-volume, well-defined subagent tasks run on Haiku.
 - Verification is done by a separate reviewer subagent with explicit criteria. The author does not verify its own output.
 - Retry limit: two attempts on the same error. Then stop, state the exact error, and wait for the user.
 
@@ -28,6 +28,7 @@ Applies to every project on this machine. Project `CLAUDE.md` files add to these
 ## Context and handoff
 - Keep long-lived facts in this file and in project `CLAUDE.md`. Keep temporary state in the task.
 - Before `/clear` or a new session on the same task, write a handoff note: task, outputs, completed checks, open issues, next action.
+- When compacting, always preserve the list of modified files, the test and check commands, and open issues.
 
 ## Tools
 - Diagrams: Archify is used only when the user asks for a diagram.

@@ -98,7 +98,7 @@
 - `autoUpdatesChannel`: `latest`
 - `theme`: `dark`
 - `enableAllProjectMcpServers`: `false`
-- `env.ENABLE_PROMPT_CACHING_1H`: `"1"`
+- `env.ENABLE_PROMPT_CACHING_1H`: 제거함. 공식 문서상 구독 플랜의 메인 대화는 기본이 1시간 TTL이라 중복이고, 이 변수는 서브에이전트·압축 요청까지 1시간으로 올려 쓰기 비용만 늘린다 (짧은 작업에는 손해).
 - `permissions.deny` 20개:
   - `Bash(rm -rf /*)`, `Bash(rm -rf ~*)`, `Bash(rm -rf $HOME*)`, `Bash(rm -rf %USERPROFILE%*)`
   - `Bash(git push --force *)`, `Bash(git push --force)`, `Bash(git push -f *)`, `Bash(git push -f)`
@@ -117,7 +117,7 @@
 - 요청한 것만 바꾼다. 3단계 이상이면 번호 계획과 완료 기준을 먼저 쓴다.
 - 완료 선언은 명령 결과·테스트·출처 확인으로만 한다.
 - 단일 에이전트로 시작. 분리는 컨텍스트 경계(기능+테스트)로. 검증은 별도 `reviewer`가 한다. 같은 오류는 2회까지만 재시도.
-- 모델 역할: 조율·최종 판단 Opus, 대량 소작업 Haiku, 일반 구현 Sonnet.
+- 모델 역할: 메인은 Sonnet. Opus는 advisor로 접근 방식 확정 전, 반복 오류, 완료 선언 전에 자문(공식 advisor 문서: Sonnet 5.5 메인 + Opus 5 이상 advisor는 허용된 조합). 대량 소작업 서브에이전트는 Haiku.
 - 금지: `.credentials*`, `.env*` 읽기·커밋. 승인 없는 force push, `reset --hard`, `git clean`, `rm -rf`. 외부 공개·push는 승인 후.
 - 세션 전환 전 인계 노트: 작업, 산출물, 완료한 확인, 열린 이슈, 다음 행동.
 
