@@ -235,7 +235,7 @@ dialog pre .l-FAIL { color: var(--bad); font-weight: 700; } dialog pre .l-WARN {
   const pdlg = $("pdlg");
   $("projBtn").onclick = () => { fillProj(); pdlg.showModal(); }; $("pdlgClose").onclick = () => pdlg.close();
   const bd = (tone, txt) => el("span", "badge " + tone, txt);
-  const open = new Set(), SRC = { memory: "https://code.claude.com/docs/en/memory", "best-practices": "https://code.claude.com/docs/en/best-practices", permissions: "https://code.claude.com/docs/en/permissions" };
+  const open = new Set(), SRC = { memory: "https://code.claude.com/docs/en/memory", "best-practices": "https://code.claude.com/docs/en/best-practices", permissions: "https://code.claude.com/docs/en/permissions", mcp: "https://code.claude.com/docs/en/mcp", skills: "https://code.claude.com/docs/en/skills", hooks: "https://code.claude.com/docs/en/hooks-guide", "claude-global": "https://github.com/DevCrop/claude-global/blob/main/CLAUDE.md" };
   const ACT = { add: ["info", "추가"], fix: ["warn", "수정"], remove: ["bad", "제거"] };
   function fillProj() {
     const list = (last && last.projects) || [];

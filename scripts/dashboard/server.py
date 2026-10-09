@@ -8,7 +8,7 @@ and the tool-call names and timestamps of the newest session log in ~/.claude/pr
 It parses the log tail in memory but emits only tool names, times, a file basename, and a command's first word plus a plain subcommand
 (never arguments, so a pasted token or `KEY=value` cannot leave the machine). Message text is never emitted.
 """
-import json, os, re, subprocess, sys, threading, time
+import json, os, re, shutil, subprocess, sys, threading, time
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -216,7 +216,7 @@ def project_setup(d):
          "defaultMode": perm.get("defaultMode") == "bypassPermissions", "rules": len(rules),
          "gitignore": "CLAUDE.local.md" in gi and "settings.local.json" in gi}
     if d.is_dir():
-        f["checks"] = practice_checks(d, f, al, cl, perm, rules, "\n".join(al + cl).lower())
+        f["checks"] = practice_checks(d, f, al, cl, perm, rules, "\n".join(al + cl).lower(), cfg)
     return f
 
 
@@ -228,7 +228,7 @@ def git_tracked(d, *pats):
         return []
 
 
-def practice_checks(d, f, al, cl, perm, rules, text):
+def practice_checks(d, f, al, cl, perm, rules, text, cfg=None):
     """Best-practice gaps as {act: add|fix|remove, level, what, why, fix, src}. Rules come from the Claude Code docs pages
     memory, best-practices and permissions (read 2026-10-10). Only the finding text leaves this function, never file content."""
     out = []
@@ -292,6 +292,54 @@ def practice_checks(d, f, al, cl, perm, rules, text):
         add("add", "warn", "검증 명령이 지침에 적혀 있지 않음", "Claude는 어떤 명령이 이 프로젝트의 검사인지 추측해야 합니다.", "지침에 실제 명령 한 줄을 적습니다. 후보: " + ", ".join(checks[:3]), "best-practices")
     if (f["agents"] or f["claude"]) and any((d / n).is_file() for n in ("docker-compose.yml", "docker-compose.yaml", "compose.yaml")) and not re.search(r"docker|container|컨테이너|make up", text):
         add("add", "info", "명령이 컨테이너/호스트 어디서 도는지 안 적혀 있음", "Claude는 환경 특이점을 코드에서 알 수 없습니다. 잘못된 곳에서 실행하면 실패합니다.", "지침에 한 줄: 검증 명령을 컨테이너에서 실행하는지, 호스트에서 실행하는지.", "best-practices")
+    cfg = cfg if isinstance(cfg, dict) else {}
+    # rtk twins: this machine's global setup evaluates permission rules on the rtk-rewritten command (claude-global CLAUDE.md)
+    if shutil.which("rtk"):
+        miss = {}
+        for kind in ("deny", "ask", "allow"):
+            rs = [r for r in (perm.get(kind) if isinstance(perm.get(kind), list) else []) if isinstance(r, str) and r.startswith("Bash(")]
+            have = set(rs)
+            n = sum(1 for r in rs if not r.startswith("Bash(rtk ") and "Bash(rtk " + r[5:] not in have)
+            if n:
+                miss[kind] = n
+        if miss:
+            add("add", "bad" if "deny" in miss else "warn", "rtk 쌍이 없는 Bash 규칙 (" + ", ".join("%s %d개" % kv for kv in miss.items()) + ")", "RTK가 git ...을 rtk git ...으로 바꾼 뒤 권한 규칙을 평가합니다. 쌍이 없으면 deny가 우회되고 allow가 적용되지 않습니다.", "각 Bash 규칙에 'Bash(rtk ...)' 쌍을 추가합니다 (/project-setup 7단계).", "claude-global")
+    mcp = d / ".mcp.json"
+    if mcp.is_file():
+        try:
+            servers = (json.loads(mcp.read_text(encoding="utf-8")) or {}).get("mcpServers") or {}
+        except Exception:
+            servers = None
+        if servers is None:
+            add("fix", "warn", ".mcp.json을 읽을 수 없음(JSON 오류)", "형식이 틀리면 팀 전체가 MCP 서버를 못 씁니다.", "JSON 문법을 고칩니다.", "mcp")
+        else:
+            lit = 0
+            for s in (servers.values() if isinstance(servers, dict) else []):
+                for part in ((s.get("headers") if isinstance(s, dict) else None) or {}), ((s.get("env") if isinstance(s, dict) else None) or {}):
+                    for k, v in (part.items() if isinstance(part, dict) else []):
+                        if isinstance(v, str) and "${" not in v and (re.search(r"authorization|token|key|secret|password", str(k), re.I) or re.search(r"(Bearer\s+\S{16,}|sk-\S{16,}|ghp_\S+|xox\S-\S+)", v)):
+                            lit += 1
+            if lit and git_tracked(d, ".mcp.json"):
+                add("fix", "bad", ".mcp.json(git 추적)에 토큰이 값으로 적혀 있음 (%d개)" % lit, "문서는 ${VAR} 환경변수 확장으로 비밀을 파일 밖에 두도록 안내합니다. 커밋된 토큰은 히스토리에 남습니다.", "값을 ${API_KEY} 형태로 바꾸고 노출된 토큰은 폐기합니다.", "mcp")
+    sk = []
+    for p in sorted((d / ".claude" / "skills").glob("*/SKILL.md")) if (d / ".claude" / "skills").is_dir() else []:
+        t = p.read_text(encoding="utf-8", errors="replace")
+        if len(t.splitlines()) > 500:
+            sk.append("길이")
+        if not re.match(r"---\s*\n(?:.*\n)*?description:", t):
+            sk.append("description")
+    if sk:
+        add("fix", "warn", "skills 문제 (500줄 초과 %d, description 없음 %d)" % (sk.count("길이"), sk.count("description")), "SKILL.md는 500줄 이하를 권장하고, description이 있어야 Claude가 언제 쓸지 판단합니다.", "긴 참고 자료는 별도 파일로 옮기고 frontmatter에 description을 씁니다.", "skills")
+    hk = cfg.get("hooks") if isinstance(cfg.get("hooks"), dict) else {}
+    gone = 0
+    for groups in hk.values():
+        for g in (groups if isinstance(groups, list) else []):
+            for h in ((g.get("hooks") if isinstance(g, dict) else None) or []):
+                m = re.search(r"\$\{?CLAUDE_PROJECT_DIR\}?\"?/([\w./-]+)", str(h.get("command", "")) if isinstance(h, dict) else "")
+                if m and ".." not in m.group(1) and not (d / m.group(1)).exists():
+                    gone += 1
+    if gone:
+        add("fix", "bad", "hook이 가리키는 프로젝트 스크립트가 없음 (%d개)" % gone, "없는 스크립트를 실행하는 hook은 매번 실패합니다.", "경로를 고치거나 hook을 지웁니다 (/hooks로 확인).", "hooks")
     return out
 
 
