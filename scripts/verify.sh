@@ -27,7 +27,8 @@ warn() { printf 'WARN  %s\n' "$*"; warns=$((warns + 1)); }
 skip() { printf 'SKIP  %s\n' "$*"; }
 
 # Frontmatter lines (between the first two --- lines) of a markdown file.
-frontmatter() { awk 'NR==1 && $0!="---" {exit} /^---$/ {c++; next} c==1 {print} c>=2 {exit}' "$1"; }
+# CR is stripped first: Git for Windows may check files out with CRLF line endings.
+frontmatter() { tr -d '\r' < "$1" | awk 'NR==1 && $0!="---" {exit} /^---$/ {c++; next} c==1 {print} c>=2 {exit}'; }
 # Top-level keys of that frontmatter.
 fm_keys() { frontmatter "$1" | sed -n 's/^\([A-Za-z][A-Za-z_-]*\):.*/\1/p'; }
 in_list() { case " $2 " in *" $1 "*) return 0 ;; esac; return 1; }
@@ -116,7 +117,12 @@ for item in $items; do [ -e "$src/$item" ] || missing="$missing $item"; done
 
 if [ "$live" -eq 1 ]; then
   echo "== machine ($dest)"
-  [ -d "$dest" ] || fail "config directory not found: $dest"
+  if [ ! -d "$dest" ]; then
+    # Stop here: running the claude CLI against a missing CLAUDE_CONFIG_DIR would create it.
+    fail "config directory not found: $dest (run: bash scripts/apply.sh)"
+    echo "== $fails FAIL, $warns WARN"
+    exit 1
+  fi
 
   # 9. applied files equal the repo (extra files in the config directory are ignored)
   for item in $items; do
@@ -136,7 +142,7 @@ EOF
            && [ "$(jq -S . "$src/$item" 2>/dev/null)" = "$(jq -S . "$dest/$item" 2>/dev/null)" ]; then
           :
         else
-          drift="$item"
+          drift=" $item"
         fi
       fi
     fi
@@ -152,7 +158,8 @@ EOF
   # 11. Ponytail plugin
   if command -v claude >/dev/null 2>&1; then
     pl="$(claude plugin list 2>&1)"
-    block="$(printf '%s\n' "$pl" | grep -A4 'ponytail@ponytail')"
+    # The ponytail entry only: from its line up to the next plugin id, so a neighbour's status is not read.
+    block="$(printf '%s\n' "$pl" | awk '/ponytail@ponytail/ {f=1; print; next} f && /[A-Za-z0-9_.-]+@[A-Za-z0-9_.-]+/ {exit} f {print}' | head -n 8)"
     if [ -z "$block" ]; then
       fail "plugin ponytail@ponytail is not installed (claude plugin marketplace add DietrichGebert/ponytail; claude plugin install ponytail@ponytail)"
     elif printf '%s' "$block" | grep -qi 'disabled'; then
