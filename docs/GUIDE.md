@@ -77,6 +77,17 @@ Habits: `/clear` between unrelated tasks; after two failed corrections on one is
 - After any change to permissions or hooks: `bash scripts/verify.sh --full` on every machine where RTK is installed.
 - Edit `claude/` in this repo, never `~/.claude` directly.
 
+## Using AO with bypass permissions (temporary)
+
+`permissions.disableBypassPermissionsMode: "disable"` stays on by default: bypass mode ignores every deny and ask rule, and AO can start a worker with `--permission-mode bypassPermissions` (`docs/NEXT-MACHINE.md` section 13). When you decide to run AO in bypass mode:
+
+1. Edit `~/.claude/settings.json` yourself and delete `permissions.disableBypassPermissionsMode` (Claude's auto mode classifier blocks the agent from changing its own guard). Do not edit `claude/settings.json`.
+2. Set the AO worker permission to `bypassPermissions`.
+3. While it is off, deny and ask rules do not protect any session that reads this file, and `verify.sh --live` reports a FAIL for the missing lock. That FAIL is expected during the AO run.
+4. When you finish, run `bash scripts/apply.sh`. It restores the lock and warns before overwriting a differing `settings.json`. Then run `bash scripts/verify.sh --live`; the goal is 0 FAIL.
+
+Do not commit the unlocked state. If bypass becomes the permanent choice, change the repo rule in a PR: `claude/settings.json`, the check in `scripts/verify.sh`, and `docs/NEXT-MACHINE.md` section 13 together.
+
 ## Not verified
 
 - Windows Git Bash and macOS behavior of `apply.sh`, `verify.sh`, the plugin hooks and `qa-deny.sh` with the real RTK hook (tested on Linux without RTK).

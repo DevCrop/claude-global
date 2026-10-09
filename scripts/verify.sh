@@ -185,6 +185,13 @@ EOF
   else
     skip "plugin check (claude CLI not on PATH)"
   fi
+  # The app keeps its own copy of the task body; apply.sh cannot sync it.
+  task="$dest/scheduled-tasks/daily-claude-update/SKILL.md"
+  if [ -f "$task" ]; then
+    grep -q 'claude/routines/daily-update.md' "$task" && pass "scheduled task points at claude/routines/daily-update.md" || warn "scheduled task body is not the pointer body (re-paste claude/scheduled-tasks/daily-claude-update/SKILL.md in the app)"
+  else
+    warn "scheduled task daily-claude-update not found (create it in the app, see docs/GUIDE.md section 4)"
+  fi
   if [ -f "$dest/.ponytail-active" ]; then pass "Ponytail flag file: $(head -n 1 "$dest/.ponytail-active")"; else warn "no .ponytail-active flag yet (written by the plugin's hooks in a new session)"; fi
 fi
 
