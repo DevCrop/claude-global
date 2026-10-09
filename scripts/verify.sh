@@ -65,7 +65,7 @@ grep -q '"disableBypassPermissionsMode"[[:space:]]*:[[:space:]]*"disable"' "$src
 ask_ok=""
 if command -v jq >/dev/null 2>&1; then
   jq -e '(.permissions.ask | type == "array") and (.permissions.ask | length > 0)' "$src/settings.json" >/dev/null 2>&1 && ask_ok=1 || ask_ok=0
-elif command -v python3 >/dev/null 2>&1; then
+elif command -v python3 >/dev/null 2>&1 && python3 -c "" >/dev/null 2>&1; then
   python3 -c "import json,sys;a=json.load(open(sys.argv[1])).get('permissions',{}).get('ask');sys.exit(0 if isinstance(a,list) and a else 1)" "$src/settings.json" 2>/dev/null && ask_ok=1 || ask_ok=0
 fi
 case "$ask_ok" in

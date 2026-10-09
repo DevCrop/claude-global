@@ -24,7 +24,7 @@ for p in $pages; do
     continue
   fi
   # An error page served with status 200 is HTML; the docs are markdown. Do not diff or cache it.
-  if tr -d '' < "$tmp" | grep -m1 -v '^[[:space:]]*$' | grep -qi '^[[:space:]]*<'; then
+  if grep -m1 -v '^[[:space:]]*$' "$tmp" | grep -qi '^[[:space:]]*<'; then
     echo "FETCH-FAIL $p ($url returned HTML, not markdown)"
     continue
   fi
