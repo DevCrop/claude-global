@@ -135,11 +135,16 @@ RTK 0.50.0:
 
 Archify (미설치):
 - 다이어그램을 요청할 때만 쓴다. 설치 전 `SKILL.md`를 읽어 검토하고 사용자 승인을 받는다.
-- 명령: `npx skills add tt-a1i/archify -g`
+- 명령: `npx skills add tt-a1i/archify -g`. 최신 릴리스 v3.0.1(2026-09-28), MIT. README는 업데이트 명령을 주지 않고 "업데이트는 자동 설치되지 않는다"고만 한다. 같은 설치 명령 재실행이 업데이트일 가능성이 높지만 확인하지 못했다.
 - 지금까지의 흐름도·차트는 앱 내장 시각화로 그렸다.
 
 Ponytail (미설치, 의도적 보류):
-- 매 세션 상시 지침이 추가되므로 기본 비활성이다. 프로젝트별로만 재검토한다.
+- 출처: `DietrichGebert/ponytail`(MIT). 매 세션 상시 지침이 추가되므로 기본 비활성이다. 프로젝트별로만 재검토한다. 같은 이름의 다른 저장소(`mikrammullah/PonyTail` 등)와 헷갈리지 않는다.
+- 최신 버전 5.1.0(2026-10-08, `.claude-plugin/plugin.json`의 `version`). 릴리스 태그는 없어서 이 파일이 버전 기준이다.
+- 설치(두 프롬프트로 따로): `/plugin marketplace add DietrichGebert/ponytail`, `/plugin install ponytail@ponytail`. 끄기: `/ponytail off`. Node.js 훅을 쓴다는 설치 가이드 설명이 있다(README 원문 미확인).
+- 업데이트 경로 `/plugin marketplace update ponytail` + `/reload-plugins`는 설치 가이드 출처이며 README에서는 확인하지 못했다.
+
+두 도구의 최신 버전은 일일 루틴이 추적한다(섹션 6). 설치는 루틴이 하지 않는다.
 
 ## 6. 예약 루틴 `daily-claude-update`
 
