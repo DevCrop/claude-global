@@ -18,6 +18,7 @@
 10. 사용자 결정 기록
 11. 함정과 주의사항
 12. 저장소 이력
+13. Orchestrator.inc(AO) 도입 검토
 
 ## 1. 한눈에 보기
 
@@ -257,6 +258,7 @@ RTK 절감 (시점별로 값이 다르다):
 - 오케스트레이션 규칙(2026-10-09): 위임 기준, 브리프 템플릿, 동시 3개 상한, reviewer에는 기준과 파일 목록만, 서브에이전트 보고는 주장으로 취급은 항상 필요한 규칙이 아니라서 `claude/CLAUDE.md`가 아니라 스킬 `orchestrate`(`claude/skills/orchestrate/`)에 둔다(공식 best-practices: 가끔만 필요한 지식은 스킬로). description 자동 매칭은 확률적이라 안 불리면 `/orchestrate`로 직접 호출한다. `apply.sh`는 스킬을 하나씩 복사한다(같은 디렉터리에 archify 등 다른 스킬이 있다). 역할별(planner, coder, tester) 에이전트는 만들지 않는다.
 - `/context`, `/usage` 같은 슬래시 명령은 사용자가 직접 실행해야 한다 (대화형 UI 명령).
 - 변경은 브랜치와 PR로 올리고 머지는 사람이 한다. 자동 머지는 요청할 때만. push는 사용자 승인 후이고 force push는 쓰지 않는다. (삭제한 원래 계획 문서의 결정을 옮겨 적음)
+- Orchestrator.inc(AO): 도입 후보, 확정 아님(2026-10-09). 핵심 경로(실제 작업 완료)를 데스크톱 네이티브에서 확인하지 못했고, Claude Code 자체의 worktree·`isolation: worktree` 서브에이전트와 비교하지 않았다. 가드레일(bypass 모드 차단)은 `permissions.disableBypassPermissionsMode`로 설정에서 강제한다. 근거는 섹션 13.
 
 ## 11. 함정과 주의사항
 
@@ -282,3 +284,26 @@ RTK 절감 (시점별로 값이 다르다):
 - `0ff4efe` docs: routine model note (first run Haiku by decision, later Sonnet)
 - `0757a18` docs: add next-machine handoff and scheduled task reference
 - 그 이후: PR #1(`claude/add-apply-script`): apply/qa 스크립트, deny 수정, 상태줄, 문서 정리. 상세는 `git log`.
+
+## 13. Orchestrator.inc(AO) 도입 검토
+
+출처: `github.com/OrchestratorInc/agent-orchestrator` (2026-10-09 기준 최신 정식 릴리즈 v0.13.5, Apache-2.0). Go 백엔드 데몬 + Electron 데스크톱 앱. 여러 코딩 에이전트를 레포별 워크트리/브랜치로 병렬 실행하고 PR·CI·리뷰 상태를 칸반으로 추적한다.
+
+### 도입 판단
+
+- 작업 패턴이 "같은 레포에서 에이전트 여러 개를 동시에 병렬 실행"에 해당해 후보로 둔다. 확정 조건: (1) 데스크톱 네이티브에서 실제 작업 하나가 끝까지 도는 것을 확인, (2) Claude Code 자체 worktree(공식 worktrees 문서)·`isolation: worktree` 서브에이전트(sub-agents 문서)로는 왜 부족한지 한 번 비교. 둘 다 아직 하지 않았다.
+- AO는 배포 기능이 없다. 레포 전체에서 "deploy"가 나오는 곳은 AO 자신의 클라우드 컨트롤플레인 배포 문서(`docs/cloud-development.md`)뿐이고, 사용자 앱을 배포하는 기능은 없다. "빠른 배포"가 목적이면 AO는 그 부분을 해결하지 않는다. PR이 올라간 뒤의 배포는 Vercel/Netlify 같은 별도 CI/CD가 맡아야 한다.
+
+### 가드레일 (필수)
+
+- **bypass 모드는 설정에서 막는다 (사람의 기억에 맡기지 않는다).** `claude/settings.json`의 `permissions.disableBypassPermissionsMode: "disable"`(공식 permissions 문서, 어느 settings 범위에서나 동작. 별도 PR `claude/permissions-hardening`)을 켜면 아래 위험이 설정으로 막힌다. 워커/프로젝트 permission 설정은 계속 `default`로 둔다. `bypassPermissions`를 선택하면 `claude`가 `--permission-mode bypassPermissions`로 실행되어 `claude/settings.json`의 deny 규칙이 전부 무시된다. 이건 Claude Code 자체 기능을 AO가 그대로 노출한 것이라 AO의 결함은 아니지만, 실수로 고르면 하네스가 무력화된다.
+  - 코드 근거: `backend/internal/adapters/agent/claudecode/claudecode.go`의 `permissionConfigEnum`, `backend/pkg/agentruntime/command.go`의 `ClaudePermissionArgs` (`default`는 플래그 자체를 안 붙여 `~/.claude/settings.json`을 그대로 따름).
+- 텔레메트리(`AO_TELEMETRY_EVENTS`, `AO_TELEMETRY_REMOTE`)는 기본 꺼짐. 클라우드 오퍼링(`AO_CLOUD_OFFERING`, `api.aoagents.dev`)은 가입해야 쓰임. 둘 다 그대로 둬도 영향 없음.
+- 데몬은 `127.0.0.1`에만 bind하고 `AO_HOST` 환경변수가 의도적으로 없음 (`backend/internal/config/config.go`). 터미널 WebSocket(`/mux`)은 Origin이 정확히 허용 목록 또는 loopback(`localhost`/`127.0.0.1`/`[::1]`)인 경우만 연결 허용, 그 외 403 (`backend/internal/httpd/cors.go`의 `isLoopbackOrigin`).
+
+### 실측 검증 (2026-10-09, 이 컨테이너, 격리된 HOME/데이터 디렉터리, 디스포저블 git 레포)
+
+- **`/mux` Origin 차단**: 실제로 빌드한 데몬에 원시 WebSocket 핸드셰이크를 보내 확인. 외부 Origin(`http://evil.example`), DNS rebinding 조합(Origin external + Host external), `null`, `file://` 전부 403. `localhost`/`127.0.0.1`/`[::1]`의 임의 포트, 앱 렌더러 Origin(`app://renderer`)은 101로 연결됨 (설계대로).
+- **deny 규칙이 AO 워커에도 적용됨**: `approvalMode: default`로 띄운 실제 OS 프로세스의 `ps` 출력에서 `--permission-mode` 플래그가 없는 것을 3회(별도 환경 각각) 확인. 같은 조건을 흉내 낸 `claude -p` 호출로 `git push --force`, `git reset --hard`, `rm -rf`, `git clean -fd`를 차단, `git status`는 정상 실행됨을 확인.
+- **실제 작업 완료까지는 검증 못함**: `POST /api/v1/sessions`로 실제 워커를 띄워 "`greet.py`에 docstring 추가 + 테스트 추가 + 커밋" 같은 작업을 시켜봤으나, 인터랙티브 TUI(PTY 기반) 모드가 이 샌드박스 컨테이너에서 첫 턴을 시작하지 못하고 멈췄다. `~/.claude/projects/*.jsonl` 트랜스크립트가 전혀 생성되지 않았고, 환경변수 정리(세션 바인딩 변수 제거)와 바이너리 이름(`ao`) 수정 후에도 3개의 독립된 환경에서 동일하게 재현됐다. 이 컨테이너의 PTY/터미널 제약으로 보이며 AO 자체의 결함인지는 구분하지 못했다. 데스크톱 네이티브 환경에서 재확인이 필요하다.
+- 한계: `chat` 모드(ACP 런타임)는 데스크톱 앱에 포함된 바이너리가 이 백엔드 단독 체크아웃에 없어 시험 못함. `tui` 모드만 시험함.
