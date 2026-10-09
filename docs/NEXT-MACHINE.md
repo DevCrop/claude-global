@@ -38,27 +38,32 @@
 
 ## 2. 새 컴퓨터 세팅 순서
 
+범위: 이 저장소는 로컬 머신(Windows, Mac)의 `~/.claude`용이다. 클라우드 세션(claude.ai/code)은 `~/.claude/settings.json`을 읽지 않고 clone한 프로젝트의 `.claude/settings.json`만 읽는다(공식 settings 문서). 클라우드용 설정은 각 프로젝트 저장소에 커밋한다.
+
 각 단계 끝에 확인 방법이 있다. 확인되기 전에 다음 단계로 넘어가지 않는다.
 
 1. Claude Code를 설치하고 로그인한다. 자격 증명은 저장소에 없으므로 새로 로그인해야 한다.
    - 확인: `claude --version`이 2.1.293 이상.
-   - 첫 컴퓨터는 `npm install -g --prefix "C:/Users/edn_y/AppData/Roaming/npm" @anthropic-ai/claude-code@latest`로 설치했다. 다른 OS는 공식 설치 방법을 따른다.
+   - 설치 방법은 공식 문서를 따른다. 첫 컴퓨터(Windows)는 npm으로 설치했다: `npm install -g @anthropic-ai/claude-code@latest` (첫 컴퓨터는 `--prefix`로 `AppData/Roaming/npm`을 지정했다).
 2. 저장소를 받는다. HTTPS 주소이므로 새 컴퓨터에서 GitHub 인증(예: `gh auth login` 또는 자격 증명 관리자)이 먼저 필요하다. private이면 인증 없이는 clone이 안 된다.
    ```bash
    git clone https://github.com/DevCrop/claude-global.git
    ```
-3. 새 컴퓨터에 기존 `~/.claude`가 있으면 먼저 통째로 백업한다. 덮어쓰기 전에 차이를 본다. 아래 파일을 복사한다.
-   - `claude/CLAUDE.md` → `~/.claude/CLAUDE.md` (마지막 줄 `@RTK.md`가 아래 `RTK.md`를 import하므로 두 파일을 같은 폴더에 둔다)
-   - `claude/RTK.md` → `~/.claude/RTK.md`
-   - `claude/settings.json` → `~/.claude/settings.json`
-   - `claude/agents/` → `~/.claude/agents/`
-   - `claude/routines/` → `~/.claude/routines/` (첫 컴퓨터 라이브에도 있다)
+3. 설정을 적용한다. Mac bash 또는 Windows Git Bash에서 실행한다.
+   ```bash
+   cd claude-global && scripts/apply.sh
+   ```
+   - 스크립트가 `CLAUDE.md`, `RTK.md`, `settings.json`, `agents/`, `routines/`만 `~/.claude`(또는 `CLAUDE_CONFIG_DIR`)로 복사한다. 덮어쓰기 전에 대상 파일을 `~/.claude-backup-<시각>/`에 백업한다. 자격 증명, `projects/`, 플러그인은 건드리지 않는다.
+   - `CLAUDE.md` 마지막 줄 `@RTK.md`가 `RTK.md`를 import하므로 두 파일이 같은 폴더에 있어야 한다. 스크립트가 함께 복사한다.
+   - 이후 갱신은 `git pull && scripts/apply.sh`.
    - 복사하지 말 것: `scripts/reset-claude.ps1` (섹션 3의 경고 참고).
    - 확인: Claude 세션에서 `/context`의 Memory files에 `CLAUDE.md`, `RTK.md`가 보이고 Custom agents에 `explorer`, `reviewer`가 보인다.
-4. RTK를 설치한다. Windows 기준:
+4. RTK를 설치한다 (RTK 공식 README 기준).
    ```bash
-   winget install rtk-ai.rtk
+   winget install rtk-ai.rtk   # Windows
+   brew install rtk            # macOS
    ```
+   - RTK가 없어도 Bash는 동작한다. 훅은 non-blocking이라 실패해도 도구 호출이 진행된다(Claude Code hooks 문서). 필터링만 꺼진다.
    - `settings.json`에 RTK 훅(`rtk hook claude`)이 이미 들어 있다. `rtk init -g`를 실행하면 설정이 바뀔 수 있으니 실행 전후 `settings.json` 차이를 비교한다. (`PLAN.md`는 `rtk init -g`를 적었지만, 이미 훅이 들어 있는 현재 상태에서는 필수가 아니다.)
    - `rtk`가 PATH에 있어야 훅이 동작한다. 첫 컴퓨터에서는 winget 설치 직후 Git Bash PATH에 없었고, 훅은 앱 재시작 뒤 활성화됐다. 이후 같은 컴퓨터의 세션에서 `command -v rtk`가 WinGet 경로를 찾는 것을 확인했다. 새 컴퓨터에서는 새 터미널·앱 재시작 후 `rtk --version`으로 직접 확인한다.
    - 확인: Bash 명령 몇 개 실행 뒤 `rtk gain`의 Total commands가 늘어난다.
@@ -158,8 +163,9 @@ Ponytail (미설치, 의도적 보류):
 1. 루틴 모델을 Sonnet으로 고정 (앱 UI). 첫 자동 실행은 sonnet-5-5로 돌았지만 그것이 UI 설정 때문인지 기본값 때문인지 모른다. UI에서 명시적으로 지정한 뒤, 내일 이후 자동 실행 세션의 모델을 `get_session`으로 다시 확인한다.
 2. CLI 2.1.294: npm에 올라오면 업데이트. 승인 필요. 확인: `claude --version`.
    ```bash
-   npm install -g --prefix "C:/Users/edn_y/AppData/Roaming/npm" @anthropic-ai/claude-code@latest
+   npm install -g @anthropic-ai/claude-code@latest
    ```
+   (첫 컴퓨터는 `--prefix "C:/Users/edn_y/AppData/Roaming/npm"`이 필요했다.)
 3. Archify: 다이어그램이 필요할 때만 (섹션 5).
 4. Ponytail: 설치하지 않는다 (섹션 5).
 5. 프로젝트 셋업·최적화 (`PLAN.md` phase 7): 별도 계획으로. 컨텍스트에서 큰 비중은 시스템 도구와 MCP 도구이며 Chrome 연동·Browser 도구가 많다. 쓰지 않는 커넥터를 끄는 것이 후보다.
