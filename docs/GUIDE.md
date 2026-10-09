@@ -81,9 +81,9 @@ Habits: `/clear` between unrelated tasks; after two failed corrections on one is
 
 `permissions.disableBypassPermissionsMode: "disable"` stays on by default: bypass mode ignores every deny and ask rule, and AO can start a worker with `--permission-mode bypassPermissions` (`docs/NEXT-MACHINE.md` section 13). When you decide to run AO in bypass mode:
 
-1. Edit `~/.claude/settings.json` yourself and delete `permissions.disableBypassPermissionsMode` (Claude's auto mode classifier blocks the agent from changing its own guard). Do not edit `claude/settings.json`.
-2. Set the AO worker permission to `bypassPermissions`.
-3. While it is off, deny and ask rules do not protect any session that reads this file, and `verify.sh --live` reports a FAIL for the missing lock. That FAIL is expected during the AO run.
+1. Edit `~/.claude/settings.json` yourself and delete `permissions.disableBypassPermissionsMode`. Do not edit `claude/settings.json`.
+2. In AO, choose the bypass permission option for the worker (it starts `claude` with `--permission-mode bypassPermissions`).
+3. While it is off, any session started in bypass mode ignores the deny and ask rules. `verify.sh --live` reports a FAIL because `~/.claude/settings.json` now differs from `claude/settings.json` (generic drift, not a lock-specific check). That FAIL is expected during the AO run.
 4. When you finish, run `bash scripts/apply.sh`. It restores the lock and warns before overwriting a differing `settings.json`. Then run `bash scripts/verify.sh --live`; the goal is 0 FAIL.
 
 Do not commit the unlocked state. If bypass becomes the permanent choice, change the repo rule in a PR: `claude/settings.json`, the check in `scripts/verify.sh`, and `docs/NEXT-MACHINE.md` section 13 together.
