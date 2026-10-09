@@ -166,7 +166,15 @@ Ponytail (미설치, 의도적 보류):
 
 ## 7. 남은 작업 (순서대로)
 
-0. 브랜치 `claude/add-apply-script`는 push됐고 PR #1에서 머지를 기다린다. 머지 후 각 컴퓨터에서 `git pull && bash scripts/apply.sh`, 이어서 RTK가 설치된 머신에서 `bash scripts/qa-deny.sh`(실제 RTK로는 아직 미검증). 맥과 Windows Git Bash에서 한 번씩 실행해 확인한다. RTK는 0.51.0으로 올린다. 결정 대기: advisor(Opus) 전역 유지 여부(섹션 9의 비용 측정).
+0. PR #1(`claude/add-apply-script`) 머지 후, 각 컴퓨터에서 아래 순서로 실행하고 결과를 기록한다. 맥과 Windows Git Bash에서 각각 한 번씩.
+   ```bash
+   git pull && bash scripts/apply.sh
+   command -v jq            # 상태줄에 필요. 없으면 설치 (섹션 2의 4단계)
+   bash scripts/qa-deny.sh  # RTK가 설치된 머신에서. 실제 RTK로는 첫 검증
+   ```
+   - FAIL이 나오면 출력 전체를 남기고 deny 패턴을 고친 뒤 다시 실행한다.
+   - RTK는 0.51.0으로 올린다.
+   - 결정 대기: advisor(Opus) 전역 유지 여부(섹션 9의 비용 측정, 메인 호출의 약 3.6배).
 
 1. 루틴 모델을 Sonnet으로 고정 (앱 UI). 첫 자동 실행은 sonnet-5-5로 돌았지만 그것이 UI 설정 때문인지 기본값 때문인지 모른다. UI에서 명시적으로 지정한 뒤, 내일 이후 자동 실행 세션의 모델을 `get_session`으로 다시 확인한다.
 2. CLI 최신화: 일일 루틴 보고서에 업데이트 명령이 나오면 실행한다. 승인 필요. 확인: `claude --version`.
