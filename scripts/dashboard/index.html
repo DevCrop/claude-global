@@ -88,7 +88,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .col > .panel { flex: 1 1 0; }
 
 /* charts */
-.chart { position: relative; flex: 1; min-height: 120px; }
+.chart { position: relative; flex: 1; min-height: 120px; max-height: 300px; }
 .chart svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .chart text { fill: var(--faint); font: 10px var(--mono); }
 .chart .grid line { stroke: var(--line); stroke-width: 1; }
@@ -180,7 +180,7 @@ dialog pre .l-FAIL { color: var(--bad); font-weight: 700; } dialog pre .l-WARN {
       <div class="panel">
         <div class="ph"><h2>변경 이력</h2><span class="hint" id="prNote"></span></div>
         <div class="rows" id="prs"></div>
-        <div class="chart" id="perDay" style="min-height:84px;flex:0 0 84px"></div>
+        <div class="chart" id="perDay" style="min-height:110px;flex:0 0 110px"></div>
       </div>
       <div class="panel">
         <div class="ph"><h2>점검과 알림</h2><span class="hint" id="chkNote"></span></div>
@@ -233,7 +233,8 @@ dialog pre .l-FAIL { color: var(--bad); font-weight: 700; } dialog pre .l-WARN {
   const charts = {}, tip = $("tip");
   function chart(id, n, aria, ticks) {
     if (charts[id]) return charts[id];
-    const host = $(id), W = 600, H = 160, L = 28, R = 8, T = 18, B = 20, bw = (W - L - R) / n;
+    // viewBox = the host's real pixel size, so the chart fills the width at any panel size (rebuilt on resize)
+    const host = $(id), W = Math.max(240, Math.round(host.clientWidth)), H = Math.max(70, Math.round(host.clientHeight)), L = 28, R = 8, T = 18, B = 20, bw = (W - L - R) / n;
     const svg = sv("svg", { viewBox: `0 0 ${W} ${H}`, preserveAspectRatio: "xMidYMid meet", role: "img", "aria-label": aria });
     const grid = sv("g", { class: "grid" }), gs = [0, 1, 2].map(() => { const g = sv("g"); g.append(sv("line", { x1: L, x2: W - R, y1: 0, y2: 0 }), sv("text", { x: L - 6, y: 3.5, "text-anchor": "end" })); grid.append(g); return g; });
     svg.append(grid);
@@ -362,6 +363,7 @@ dialog pre .l-FAIL { color: var(--bad); font-weight: 700; } dialog pre .l-WARN {
     $("live").className = "badge live " + (fresh ? "ok" : "bad"); $("liveText").textContent = fresh ? "LIVE · 3s" : "OFFLINE";
   }
   tick(); setInterval(tick, 3000);
+  let rz; addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { for (const k in charts) delete charts[k]; if (last) render(last); }, 150); });
 })();
 </script>
 </body>
