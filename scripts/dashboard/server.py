@@ -231,7 +231,9 @@ def practice_checks(d, f, al, cl, perm, rules, text):
     if not (f["agents"] or f["claude"]):
         add("add", "warn", "지침 파일 없음", "Claude는 매 세션 CLAUDE.md(또는 AGENTS.md)를 읽습니다. 없으면 빌드·테스트 명령과 프로젝트 규칙을 매번 추측합니다.", "AGENTS.md 또는 CLAUDE.md를 추가: 검증 명령, 기본값과 다른 스타일 규칙, 함정만 (/project-setup).", "memory")
     if f["agents"] and f["claude"] and not f["imports"]:
-        add("fix", "bad", "CLAUDE.md가 @AGENTS.md를 가져오지 않음", "AGENTS.md와 CLAUDE.md가 둘 다 있으면 Claude는 CLAUDE.md만 읽습니다. AGENTS.md의 규칙이 Claude에게 전달되지 않습니다.", "CLAUDE.md 첫 줄을 @AGENTS.md로 하고 Claude 전용 내용만 그 아래에 둡니다.", "memory")
+        # A thin CLAUDE.md that names AGENTS.md (a shared book both tools read) may be deliberate: report it, but not as a defect.
+        thin = "agents.md" in "\n".join(cl).lower() and f["claudeLines"] < 120
+        add("fix", "info" if thin else "bad", "CLAUDE.md가 @AGENTS.md를 가져오지 않음" + (" (얇은 진입점이 AGENTS.md를 언급함)" if thin else ""), "AGENTS.md와 CLAUDE.md가 둘 다 있으면 Claude는 CLAUDE.md만 읽습니다. AGENTS.md의 규칙은 import하거나 CLAUDE.md가 가리키는 문서에 있어야 Claude에게 전달됩니다.", ("의도한 구조(공유 문서로 안내)라면 그대로 두고, 아니면 " if thin else "") + "CLAUDE.md 첫 줄을 @AGENTS.md로 하고 Claude 전용 내용만 그 아래에 둡니다.", "memory")
     if f["agents"] and not f["claude"] and local:
         add("fix", "warn", "CLAUDE.local.md 때문에 AGENTS.md가 읽히지 않을 수 있음", "AGENTS.md는 CLAUDE.md와 CLAUDE.local.md가 모두 없을 때만 단독으로 로드됩니다.", "프로젝트 CLAUDE.md(첫 줄 @AGENTS.md)를 만들거나 CLAUDE.local.md 첫 줄에 @AGENTS.md를 넣습니다.", "memory")
     norm = lambda ls: [l.strip() for l in ls if l.strip()]
