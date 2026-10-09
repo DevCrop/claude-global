@@ -61,7 +61,18 @@ if out="$(bash "$repo/scripts/qa-deny.sh" --static 2>&1)"; then pass "$(printf '
 grep -q '"disableBypassPermissionsMode"[[:space:]]*:[[:space:]]*"disable"' "$src/settings.json" \
   && pass "bypassPermissions mode is disabled in settings.json" \
   || fail "permissions.disableBypassPermissionsMode is not \"disable\" (bypass mode ignores the deny rules)"
-grep -q '"ask"' "$src/settings.json" && pass "permissions.ask is present" || fail "permissions.ask is missing"
+# permissions.ask must be a non-empty array (a bare grep for "ask" would also match a comment or another key)
+ask_ok=""
+if command -v jq >/dev/null 2>&1; then
+  jq -e '(.permissions.ask | type == "array") and (.permissions.ask | length > 0)' "$src/settings.json" >/dev/null 2>&1 && ask_ok=1 || ask_ok=0
+elif command -v python3 >/dev/null 2>&1; then
+  python3 -c "import json,sys;a=json.load(open(sys.argv[1])).get('permissions',{}).get('ask');sys.exit(0 if isinstance(a,list) and a else 1)" "$src/settings.json" 2>/dev/null && ask_ok=1 || ask_ok=0
+fi
+case "$ask_ok" in
+  1) pass "permissions.ask is a non-empty list" ;;
+  0) fail "permissions.ask is missing or empty" ;;
+  *) grep -q '"ask"' "$src/settings.json" && warn "permissions.ask present (not validated: needs jq or python3)" || fail "permissions.ask is missing" ;;
+esac
 
 # 5. global CLAUDE.md size (docs: target under 200 lines)
 lines="$(wc -l < "$src/CLAUDE.md" | tr -d ' ')"
