@@ -22,7 +22,6 @@ Applies to every project on this machine. Project `CLAUDE.md` files add to these
 
 ## Safety
 - Never read or commit `.credentials*` or `.env*`.
-- No force push, hard reset, `git clean`, or `rm -rf` without an explicit request.
 - Before overwriting or deleting, show the target and get confirmation.
 - Publish, push, or send anything outward only after approval.
 
@@ -31,7 +30,6 @@ Applies to every project on this machine. Project `CLAUDE.md` files add to these
 - Before `/clear` or a new session on the same task, write a handoff note: task, outputs, completed checks, open issues, next action.
 
 ## Tools
-- Bash commands run through RTK when it is installed (`rtk init -g`). Check `rtk gain` to confirm.
 - Diagrams: Archify is used only when the user asks for a diagram.
 - Ponytail is not active by default.
 

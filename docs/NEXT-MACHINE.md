@@ -143,7 +143,7 @@ Ponytail (미설치, 의도적 보류):
 
 ## 6. 예약 루틴 `daily-claude-update`
 
-- 목적: Claude Code 변경 로그와 Anthropic 뉴스를 매일 확인하고 보고서만 쓴다. `~/.claude`는 절대 바꾸지 않는다.
+- 목적: Claude Code 변경 로그, Anthropic 뉴스, Claude Code와 RTK의 최신 버전을 매일 확인하고 도구 상태(설정 드리프트, rtk PATH, rtk 사용량)를 점검해 보고서만 쓴다. `~/.claude`는 바꾸지 않고 아무것도 설치하지 않는다. 업데이트 명령은 보고서에 적고 사용자가 실행한다.
 - 일정: cron `0 9 * * *` (로컬 09:00, 실제로는 약 09:03에 시작, 몇 분 지연 있음). 상태: 활성(enabled).
 - 정의 파일: `claude/routines/daily-update.md`(단계·출력 형식), `claude/scheduled-tasks/daily-claude-update/SKILL.md`(예약 작업 본문 참조본).
 - 출력: `reports/YYYY-MM-DD.md`(로컬 전용, `.gitignore`), 기준 상태 `state/last-seen.json`(추적됨). 첫 보고서는 `reports/2026-10-09.md`.
@@ -152,7 +152,7 @@ Ponytail (미설치, 의도적 보류):
 - 제한: 앱이 켜져 있을 때만 실행된다. 예약 도구에는 모델 필드가 없고, 예약 작업 본문(`SKILL.md`)에도 name, description만 있다.
 - 새 컴퓨터에서 만들기:
   1. Claude 앱의 예약 작업 기능으로 `daily-claude-update`를 만들고 본문에 `SKILL.md` 내용을 넣는다.
-  2. 본문 안의 `D:\project\claude-global`과 `.claude` 경로를 새 컴퓨터의 실제 경로로 바꾼다.
+  2. 본문 안의 `<repo>`를 새 컴퓨터의 claude-global clone 절대 경로로 바꾼다.
   3. 모델은 앱의 Scheduled 화면에서 Sonnet으로 지정한다.
   4. 한 번 수동 실행해 보고서가 생기는지 확인한다.
 - 두 컴퓨터에서 같은 루틴을 켜면 보고서가 중복되고 `state/last-seen.json`이 충돌한다. 한쪽만 켠다.
