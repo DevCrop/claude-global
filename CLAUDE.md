@@ -10,5 +10,5 @@ Source of truth for the global Claude Code setup. `claude/` is copied into `~/.c
 ## Rules
 - Permission rules are evaluated on the input a PreToolUse hook returns. RTK rewrites `git ...` to `rtk git ...`, so every Bash deny pattern has an `rtk `-prefixed copy. Add both when you add a pattern.
 - Keep `claude/CLAUDE.md` under 200 lines and free of lines that deny rules, settings, or `RTK.md` already cover.
-- Never commit `reports/`, credentials, or `.env*`. `state/last-seen.json` is written by the daily routine on one machine only.
+- Never commit `reports/`, credentials, or `.env*`. `state/` holds the daily routine's per-machine baseline and is gitignored, so it never blocks `git pull` and values from one machine never mix with another.
 - Changes go through a branch and a PR, and a person merges. Decisions and history are in `docs/NEXT-MACHINE.md`.
