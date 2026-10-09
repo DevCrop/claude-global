@@ -93,11 +93,11 @@ grade() { # name
     markup)   printf '%s' "$prop" | grep -q 'Bash(' && fail "$n P: allows a command although no check exists" || pass "$n P: invented no check"
               grep -Eq '질문|Question' "$r" && pass "$n P: asks what the check should be" || fail "$n P: did not ask" ;;
     agents)   # CLAUDE.md must not be proposed, or must start with @AGENTS.md (otherwise Claude stops reading AGENTS.md)
-              if printf '%s' "$prop" | grep -Eq '^[+ ]?@AGENTS\.md'; then pass "$n P: any CLAUDE.md starts with @AGENTS.md"
-              elif grep -Eq '만들지 않|제안하지 않|필요하지 않|불필요|생성하지 않' "$r"; then pass "$n P: no CLAUDE.md proposed"
+              if printf '%s' "$prop" | grep -Eq '^[+ ]*@AGENTS\.md'; then pass "$n P: any CLAUDE.md starts with @AGENTS.md"
+              elif grep -E 'CLAUDE\.md' "$r" | grep -Eq '만들지 않|제안하지 않|필요하지 않|불필요|생성하지 않|두지 않'; then pass "$n P: no CLAUDE.md proposed"
               else fail "$n P: proposes CLAUDE.md without @AGENTS.md (or says nothing about it)"; fi
               grep -Eq 'npm test|vitest' "$r" && pass "$n P: test command found" || fail "$n P: missing test command" ;;
-    both)     printf '%s' "$prop" | grep -Eq '^[+ ]?@AGENTS\.md' && pass "$n P: CLAUDE.md proposed as @AGENTS.md import" || fail "$n P: no @AGENTS.md import proposed"
+    both)     printf '%s' "$prop" | grep -Eq '^[+ ]*@AGENTS\.md' && pass "$n P: CLAUDE.md proposed as @AGENTS.md import" || fail "$n P: no @AGENTS.md import proposed"
               grep -q 'REPLACE' "$r" && pass "$n P: lists the [REPLACE:] placeholder" || fail "$n P: placeholder not reported" ;;
     existing) grep -q 'EXISTING_MARKER' "$r" && pass "$n P: refers to the existing CLAUDE.md (diff, not overwrite)" || fail "$n P: ignored the existing CLAUDE.md" ;;
   esac
