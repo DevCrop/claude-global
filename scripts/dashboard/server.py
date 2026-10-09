@@ -197,7 +197,7 @@ def project_setup(d):
     for l in cl:  # an @import counts anywhere outside a code fence
         if l.lstrip().startswith("```"):
             fence = not fence
-        elif not fence and re.match(r"\s*@(\./)?AGENTS\.md\b", l):
+        elif not fence and re.search(r"(?<![\w])@(\./|\.\./)?AGENTS\.md(?![\w.])", re.sub(r"`[^`]*`", "", l)):
             imports = True
     try:
         cfg = json.loads((d / ".claude" / "settings.json").read_text(encoding="utf-8"))
@@ -317,13 +317,16 @@ def practice_checks(d, f, al, cl, perm, rules, text, cfg=None):
             for s in (servers.values() if isinstance(servers, dict) else []):
                 for part in ((s.get("headers") if isinstance(s, dict) else None) or {}), ((s.get("env") if isinstance(s, dict) else None) or {}):
                     for k, v in (part.items() if isinstance(part, dict) else []):
-                        if isinstance(v, str) and "${" not in v and (re.search(r"authorization|token|key|secret|password", str(k), re.I) or re.search(r"(Bearer\s+\S{16,}|sk-\S{16,}|ghp_\S+|xox\S-\S+)", v)):
+                        if isinstance(v, str) and "${" not in v and not v.startswith("$") and len(v) >= 12 and (re.search(r"authorization|token$|(^|_)key$|secret|password", str(k), re.I) or re.search(r"(Bearer\s+\S{16,}|sk-\S{16,}|ghp_\S+|xox\S-\S+)", v)):
                             lit += 1
             if lit and git_tracked(d, ".mcp.json"):
                 add("fix", "bad", ".mcp.json(git 추적)에 토큰이 값으로 적혀 있음 (%d개)" % lit, "문서는 ${VAR} 환경변수 확장으로 비밀을 파일 밖에 두도록 안내합니다. 커밋된 토큰은 히스토리에 남습니다.", "값을 ${API_KEY} 형태로 바꾸고 노출된 토큰은 폐기합니다.", "mcp")
     sk = []
     for p in sorted((d / ".claude" / "skills").glob("*/SKILL.md")) if (d / ".claude" / "skills").is_dir() else []:
-        t = p.read_text(encoding="utf-8", errors="replace")
+        try:
+            t = p.read_text(encoding="utf-8", errors="replace")
+        except Exception:
+            continue
         if len(t.splitlines()) > 500:
             sk.append("길이")
         if not re.match(r"---\s*\n(?:.*\n)*?description:", t):
@@ -335,7 +338,8 @@ def practice_checks(d, f, al, cl, perm, rules, text, cfg=None):
     for groups in hk.values():
         for g in (groups if isinstance(groups, list) else []):
             for h in ((g.get("hooks") if isinstance(g, dict) else None) or []):
-                m = re.search(r"\$\{?CLAUDE_PROJECT_DIR\}?\"?/([\w./-]+)", str(h.get("command", "")) if isinstance(h, dict) else "")
+                cmd = str(h.get("command", "")) if isinstance(h, dict) else ""
+                m = re.search(r"\"\$\{?CLAUDE_PROJECT_DIR\}?/([^\"]+)\"", cmd) or re.search(r"\$\{?CLAUDE_PROJECT_DIR\}?\"?/([\w./-]+)", cmd)  # quoted path may hold spaces
                 if m and ".." not in m.group(1) and not (d / m.group(1)).exists():
                     gone += 1
     if gone:
