@@ -19,9 +19,13 @@ backups/
 cache/
 plugins/
 reports/
+state/
 ide/
 *.lock
 
 # OS and editor
 Thumbs.db
 .vscode/
+
+# Archify diagram output
+.archify/

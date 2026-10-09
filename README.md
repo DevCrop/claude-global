@@ -9,7 +9,7 @@ Source of truth for the global Claude Code setup on this machine (`~/.claude`).
 - `claude/RTK.md`, `claude/agents/` — RTK note and subagents, copied to `~/.claude/`
 - `claude/routines/`, `claude/scheduled-tasks/` — daily update routine and the scheduled task body
 - `docs/NEXT-MACHINE.md` — full handoff: decisions, links, routine, remaining work, setup order for a new machine
-- `state/last-seen.json` — baseline for the daily routine
+- `state/last-seen.json` — per-machine baseline for the daily routine (gitignored, created by the routine)
 - `scripts/apply.sh` — copies `claude/` into `~/.claude/` with a backup
 - `scripts/qa-deny.sh` — checks that the deny rules still block dangerous commands on this machine, with hooks such as rtk active
 

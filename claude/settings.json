@@ -61,7 +61,20 @@
       "Bash(rtk git checkout .)",
       "Bash(rtk git restore .)",
       "Bash(rtk git restore --staged .)"
-    ]
+    ],
+    "ask": [
+      "Bash(git push *)",
+      "Bash(git branch -D *)",
+      "Bash(git stash drop *)",
+      "Bash(git stash clear *)",
+      "Bash(rm *)",
+      "Bash(rtk git push *)",
+      "Bash(rtk git branch -D *)",
+      "Bash(rtk git stash drop *)",
+      "Bash(rtk git stash clear *)",
+      "Bash(rtk rm *)"
+    ],
+    "disableBypassPermissionsMode": "disable"
   },
   "hooks": {
     "PreToolUse": [
@@ -75,5 +88,16 @@
         ]
       }
     ]
+  },
+  "extraKnownMarketplaces": {
+    "ponytail": {
+      "source": {
+        "source": "github",
+        "repo": "DietrichGebert/ponytail"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "ponytail@ponytail": true
   }
 }
