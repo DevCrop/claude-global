@@ -9,7 +9,7 @@ Note: the scheduled task has no model field, so it runs on the app default. The 
 ## Steps
 
 1. Read the installed version: `claude --version`.
-2. Read the official changelog with WebFetch: `https://code.claude.com/docs/en/changelog`. Extract entries newer than the version in `state/last-seen.json`. If the file is missing, use the 10 most recent entries.
+2. Read the official changelog with WebFetch: `https://code.claude.com/docs/en/changelog`. Extract entries newer than `latest_changelog_version` in `state/last-seen.json`. If the file is missing, use the 10 most recent entries.
 3. Read `https://www.anthropic.com/news` and list posts from the last 24 hours that concern Claude Code, models, skills, hooks, or subagents.
 4. Optional signal only: search X for Claude Code and Claude Dev posts. x.com returns HTTP 402 to automated fetches, so use search snippets and do not rely on them. Official sources decide.
 5. For each new item, classify it as: relevant to our setup, informational, or ignore. For relevant items, state the affected file in `claude/` and the proposed change.
@@ -22,7 +22,7 @@ Note: the scheduled task has no model field, so it runs on the app default. The 
    - RTK in use: `rtk gain` total commands against `rtk_total_commands` in `state/last-seen.json`. An unchanged count since the last run is a signal, not proof, because no Bash may have run. Say which it is when unknown.
 8. Official docs watch. Run `bash scripts/docs-watch.sh --update`. It fetches the pages this setup depends on (best-practices, memory, skills, sub-agents, permissions, plugins, settings, hooks-guide) and prints NEW (first run on this machine: baseline, no analysis), SAME, or CHANGED with a short line diff. For each CHANGED page read the diff, and fetch the page only when the diff is not enough. Classify each change as relevant (affects `claude/settings.json`, `claude/CLAUDE.md`, an agent, a skill, a script or this routine), informational, or ignore. For a relevant change state the affected file and the proposed change with the page URL.
 9. Write `reports/YYYY-MM-DD.md` in this repository with: tool versions, new items, setup health, docs watch, proposed changes, and what was not verified.
-10. Update `state/last-seen.json` with the latest changelog version, `installed_rtk`, `latest_rtk_version`, `rtk_total_commands`, `latest_archify_version` and `latest_ponytail_version`. Write a value only if it was read this run.
+10. Update `state/last-seen.json` with these exact keys, writing a key only if its value was read this run: `checked_on`, `installed_cli`, `latest_changelog_version`, `latest_changelog_date`, `latest_cli_npm`, `installed_rtk`, `latest_rtk_version`, `rtk_total_commands`, `latest_archify_version`, `latest_ponytail_version`.
 11. Do not edit the Claude config directory, do not install anything, do not commit or push. This routine writes only `reports/` (including the docs cache) and `state/last-seen.json`. A proposed change is applied only after the user approves it in chat.
 
 ## Output format
