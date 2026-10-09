@@ -7,305 +7,330 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
 <style>
-/* Direction: Claude's own look. Warm paper canvas, near-black ink, one terracotta accent, serif display over a plain sans,
-   hairline borders, no shadows. Layout: one column of sections; summary first, then workflow flow, live activity, history, logs. */
+/* Direction: Claude's look (paper canvas, near-black ink, one terracotta accent, serif numerals and titles, hairline borders).
+   Layout: an app shell that fits one screen on desktop: top bar, KPI strip, pipeline, then three panels.
+   Nothing scrolls; full logs open in a dialog. Below 1100px the panels stack and the page scrolls normally. */
 :root {
   --bg: #faf9f5; --panel: #ffffff; --line: #e8e6dc; --fg: #141413; --muted: #5e5d59; --faint: #8a887f;
-  --accent: #d97757; --accent-soft: #f6e6de; --pink: #c6613f;
+  --accent: #d97757; --accent-soft: #f6e6de; --accent-ink: #c6613f;
   --ok: #4d7c47; --ok-soft: #e6efe1; --warn: #a2650f; --warn-soft: #f7ecd2; --bad: #b53333; --bad-soft: #f6e0dc;
   --display: "Source Serif 4", "Tiempos Text", Georgia, "IBM Plex Sans KR", "Malgun Gothic", serif;
   --sans: system-ui, -apple-system, "Segoe UI", "IBM Plex Sans KR", "Malgun Gothic", sans-serif;
   --mono: ui-monospace, "Cascadia Mono", Consolas, Menlo, monospace;
-  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 48px;
-  --r-xs: 6px; --r-md: 8px; --r-xl: 14px;
-  --t-xs: 12px; --t-sm: 14px; --t-md: 15px; --t-lg: 22px; --t-xl: 30px;
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px;
+  --r-sm: 6px; --r-lg: 12px;
+  --t-xs: 11.5px; --t-sm: 13px; --t-md: 14px; --t-lg: 17px; --t-kpi: 30px;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #262624; --panel: #30302e; --line: #44433f; --fg: #faf9f5; --muted: #c2c0b6; --faint: #8f8d84;
-  --accent: #d97757; --accent-soft: #432f27; --pink: #e8906f;
+  --accent: #d97757; --accent-soft: #432f27; --accent-ink: #e8906f;
   --ok: #8fc287; --ok-soft: #26352a; --warn: #e3b25f; --warn-soft: #3d3220; --bad: #f08c82; --bad-soft: #432724; color-scheme: dark; } }
 :root[data-theme="dark"] {
   --bg: #262624; --panel: #30302e; --line: #44433f; --fg: #faf9f5; --muted: #c2c0b6; --faint: #8f8d84;
-  --accent: #d97757; --accent-soft: #432f27; --pink: #e8906f;
+  --accent: #d97757; --accent-soft: #432f27; --accent-ink: #e8906f;
   --ok: #8fc287; --ok-soft: #26352a; --warn: #e3b25f; --warn-soft: #3d3220; --bad: #f08c82; --bad-soft: #432724; color-scheme: dark; }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--fg); font: 400 var(--t-md)/1.5 var(--sans); }
-.wrap { max-width: 1200px; margin: 0 auto; padding: var(--s6) var(--s4); display: flex; flex-direction: column; gap: var(--s6); }
-header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s3); }
-h1 { margin: 0; font-family: var(--display); font-size: 40px; line-height: 1.15; font-weight: 500; letter-spacing: -0.01em; text-wrap: balance; }
-h2 { margin: 0; font-family: var(--display); font-size: var(--t-lg); font-weight: 500; }
-.sub { color: var(--muted); font-size: var(--t-sm); margin-top: var(--s1); }
-.label { font-size: var(--t-sm); letter-spacing: 0; color: var(--muted); font-weight: 500; }
-.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
-.meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
-.chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: var(--r-xs); font-size: var(--t-xs); font-weight: 500; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 400 var(--t-md)/1.45 var(--sans); }
+.shell { min-height: 100%; padding: var(--s4); display: grid; gap: var(--s3); grid-template-rows: auto auto auto 1fr; }
+@media (min-width: 1100px) { .shell { height: 100%; } }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+
+/* top bar */
+.top { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: var(--s3); min-width: 0; }
+.mark { width: 28px; height: 28px; border-radius: 8px; background: var(--accent); flex: none; display: grid; place-items: center; color: #fff; font: 600 15px var(--display); }
+.brand h1 { margin: 0; font: 500 var(--t-lg)/1.2 var(--display); }
+.brand .crumb { font-size: var(--t-sm); color: var(--muted); }
+.meta { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; font-size: var(--t-xs); font-weight: 500; background: var(--accent-soft); color: var(--accent-ink); white-space: nowrap; border: 0; }
 .chip.ok { background: var(--ok-soft); color: var(--ok); } .chip.warn { background: var(--warn-soft); color: var(--warn); } .chip.bad { background: var(--bad-soft); color: var(--bad); }
-.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
-.live .dot { background: var(--ok); animation: pulse 1.6s ease-in-out infinite; }
-.stale .dot { background: var(--bad); animation: none; }
-@keyframes pulse { 50% { opacity: .35; } }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.live .dot { animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .3; } }
 @media (prefers-reduced-motion: reduce) { .live .dot { animation: none; } }
-.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--s4); }
-.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-xl); padding: var(--s5); min-width: 0; }
-.kpi { display: flex; flex-direction: column; gap: var(--s2); }
-.kpi .big { font-family: var(--display); font-variant-numeric: tabular-nums; font-size: 28px; line-height: 1.2; font-weight: 500; overflow-wrap: anywhere; }
-.kpi .note { font-size: var(--t-sm); color: var(--muted); }
-section { display: flex; flex-direction: column; gap: var(--s3); min-width: 0; }
-.sec-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s2); }
-/* workflow flow */
-.flow { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--s3); counter-reset: n; }
-.node { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-xl); padding: var(--s4); display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.node .name { font-weight: 600; font-size: var(--t-md); }
-.node .where { font-family: var(--mono); font-size: var(--t-xs); color: var(--muted); overflow-wrap: anywhere; }
-.node .val { font-family: var(--mono); font-size: var(--t-sm); margin-top: var(--s2); overflow-wrap: anywhere; }
-.node .state { position: absolute; top: var(--s3); right: var(--s3); width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
-.node.ok .state { background: var(--ok); } .node.warn .state { background: var(--warn); } .node.bad .state { background: var(--bad); }
-.node.active { border-color: var(--pink); background: var(--accent-soft); }
-.node.active .name::after { content: " ● 지금"; color: var(--pink); font-size: var(--t-xs); font-weight: 500; }
-.flowhint { font-size: var(--t-xs); color: var(--faint); }
-/* activity */
-.two { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--s4); }
-@media (max-width: 860px) { h1 { font-size: 30px; } }
-@media (max-width: 860px) { .two { grid-template-columns: minmax(0, 1fr); } }
-.stack { display: flex; flex-direction: column; gap: var(--s4); min-width: 0; }
-svg text { fill: var(--muted); font-family: var(--mono); font-size: 11px; }
-.mix { display: flex; flex-direction: column; gap: var(--s2); }
-.mixrow { display: grid; grid-template-columns: 120px 1fr 32px; align-items: center; gap: var(--s2); font-size: var(--t-sm); }
-.mixrow span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mixrow .bar { height: 8px; border-radius: 4px; background: var(--accent-soft); overflow: hidden; }
-.mixrow .bar i { display: block; height: 100%; background: var(--accent); }
-.stream { max-height: 420px; overflow-y: auto; display: flex; flex-direction: column; }
-.ev { display: grid; grid-template-columns: 64px 128px 1fr; gap: var(--s2); align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: var(--t-sm); }
-.ev:last-child { border-bottom: 0; }
-.ev time { font-family: var(--mono); font-size: var(--t-xs); color: var(--faint); }
-.ev .tgt { font-family: var(--mono); font-size: var(--t-xs); color: var(--muted); overflow-wrap: anywhere; }
-.tool { border-radius: var(--r-xs); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--mono); font-size: var(--t-xs); padding: 1px 6px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); justify-self: start; }
-.tool.write { background: var(--warn-soft); color: var(--warn); } .tool.user { background: var(--ok-soft); color: var(--ok); }
-/* history */
-.hist { display: flex; flex-direction: column; }
-.pr { display: grid; grid-template-columns: 56px 1fr auto; gap: var(--s3); align-items: baseline; padding: 10px 0; border-bottom: 1px solid var(--line); }
-.pr:last-child { border-bottom: 0; }
-.pr .t { font-weight: 500; overflow-wrap: anywhere; }
-.pr .d { font-size: var(--t-xs); color: var(--muted); font-family: var(--mono); text-align: right; white-space: nowrap; }
+button { font: inherit; cursor: pointer; }
+.btn { font-size: var(--t-xs); font-weight: 500; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 5px 10px; }
+.btn:hover { border-color: var(--faint); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* panels */
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-lg); padding: var(--s4); min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: var(--s3); overflow: hidden; }
+.ph { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s2); }
+.ph h2 { margin: 0; font: 500 var(--t-md)/1.3 var(--sans); }
+.ph .hint { font-size: var(--t-xs); color: var(--faint); white-space: nowrap; }
+
+/* KPI strip */
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s3); }
+@media (max-width: 860px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.kpi { padding: var(--s3) var(--s4); gap: 2px; }
+.kpi .k { font-size: var(--t-xs); color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.kpi .k i { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
+.kpi.ok .k i { background: var(--ok); } .kpi.warn .k i { background: var(--warn); } .kpi.bad .k i { background: var(--bad); }
+.kpi .v { font: 500 var(--t-kpi)/1.15 var(--display); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kpi .v small { font: 400 var(--t-sm) var(--sans); color: var(--muted); margin-left: 4px; }
+.kpi .n { font-size: var(--t-xs); color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* pipeline */
+.pipe { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); padding: var(--s3) var(--s4); gap: 0; }
+@media (max-width: 1100px) { .pipe { grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: var(--s3); } }
+@media (max-width: 560px) { .pipe { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.step { position: relative; display: flex; flex-direction: column; gap: 1px; padding: 0 var(--s3) 0 0; min-width: 0; }
+.step .nm { display: flex; align-items: center; gap: 6px; font-size: var(--t-sm); font-weight: 600; }
+.step .nm i { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); flex: none; }
+.step.ok .nm i { background: var(--ok); } .step.warn .nm i { background: var(--warn); } .step.bad .nm i { background: var(--bad); }
+.step .vl { font-size: var(--t-xs); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.step .wh { font: 400 10.5px var(--mono); color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.step + .step { padding-left: var(--s3); border-left: 1px solid var(--line); }
+.step.active .nm { color: var(--accent-ink); }
+.step.active .nm i { background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.step.active .nm::after { content: "지금"; margin-left: auto; font-size: 10.5px; font-weight: 500; padding: 1px 6px; border-radius: 999px; background: var(--accent-soft); }
+
+/* main grid */
+.main { display: grid; gap: var(--s3); grid-template-columns: minmax(0, 5fr) minmax(0, 4fr) minmax(0, 4fr); min-height: 0; }
+@media (max-width: 1100px) { .main { grid-template-columns: minmax(0, 1fr); } }
+.col { display: flex; flex-direction: column; gap: var(--s3); min-height: 0; min-width: 0; }
+.col > .panel { flex: 1 1 0; }
+svg text { fill: var(--faint); font-family: var(--mono); font-size: 10px; }
+.chart { flex: 1; min-height: 110px; }
+.chart svg { display: block; width: 100%; height: 100%; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: var(--t-xs); color: var(--muted); }
+.legend b { font-weight: 500; color: var(--fg); margin-left: 4px; }
+.stack { display: flex; height: 8px; border-radius: 4px; overflow: hidden; gap: 2px; }
+.stack i { display: block; height: 100%; }
+
+/* rows (events, PRs, checks) */
+.rows { display: flex; flex-direction: column; min-height: 0; }
+.row { display: grid; align-items: center; gap: var(--s2); padding: 7px 0; border-bottom: 1px solid var(--line); font-size: var(--t-sm); min-width: 0; }
+.row:last-child { border-bottom: 0; }
+.row .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.ev { grid-template-columns: 56px 104px minmax(0, 1fr); }
+.ev time { font: 400 var(--t-xs) var(--mono); color: var(--faint); }
+.tool { font: 500 var(--t-xs) var(--mono); padding: 1px 7px; border-radius: 4px; background: var(--accent-soft); color: var(--accent-ink); justify-self: start; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tool.user { background: var(--ok-soft); color: var(--ok); }
+.pr { grid-template-columns: 40px minmax(0, 1fr) auto; }
+.pr .d { font: 400 var(--t-xs) var(--mono); color: var(--faint); white-space: nowrap; }
 .add { color: var(--ok); } .del { color: var(--bad); }
-pre { margin: 0; font-family: var(--mono); font-size: var(--t-xs); line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 340px; overflow: auto; }
-pre .l-FAIL { color: var(--bad); font-weight: 500; } pre .l-WARN { color: var(--warn); } pre .l-PASS { color: var(--muted); }
-.empty { color: var(--faint); font-size: var(--t-sm); padding: var(--s3) 0; }
-button.theme { font: inherit; font-size: var(--t-xs); font-weight: 500; color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: var(--r-md); padding: 6px 12px; cursor: pointer; }
-button.theme:focus-visible, .stream:focus-visible, pre:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pill { font-size: 10.5px; font-weight: 500; padding: 1px 7px; border-radius: 999px; background: var(--ok-soft); color: var(--ok); margin-right: 6px; }
+.pill.open { background: var(--warn-soft); color: var(--warn); }
+.chk { grid-template-columns: 64px minmax(0, 1fr); }
+.badge { font: 600 10.5px var(--mono); padding: 1px 6px; border-radius: 4px; justify-self: start; }
+.badge.FAIL { background: var(--bad-soft); color: var(--bad); } .badge.WARN { background: var(--warn-soft); color: var(--warn); } .badge.UP { background: var(--accent-soft); color: var(--accent-ink); } .badge.PASS { background: var(--ok-soft); color: var(--ok); }
+@media (max-height: 720px) { #perDay { display: none; } }
+.empty { color: var(--faint); font-size: var(--t-sm); padding: var(--s2) 0; }
+
+dialog { width: min(860px, calc(100vw - 32px)); max-height: 80vh; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--panel); color: var(--fg); padding: var(--s4); }
+dialog::backdrop { background: rgba(20, 20, 19, .5); }
+dialog .dh { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--s3); }
+dialog h2 { margin: 0; font: 500 var(--t-lg) var(--display); }
+dialog pre { margin: 0; font: 400 var(--t-xs)/1.6 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 56vh; overflow: auto; }
+dialog pre .l-FAIL { color: var(--bad); font-weight: 600; } dialog pre .l-WARN { color: var(--warn); } dialog pre .l-PASS { color: var(--muted); }
+.tabs { display: flex; gap: var(--s2); margin-bottom: var(--s3); }
+.tabs .btn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <div>
-      <div class="label">claude-global</div>
-      <h1>Setup workflow</h1>
-      <div class="sub">수정, PR, 머지, 적용, 검증, 일일 루틴이 지금 어디까지 왔는지 보여줍니다.</div>
+<div class="shell">
+  <header class="top">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">C</div>
+      <div><h1>Setup workflow</h1><div class="crumb">claude-global · <span id="branch">—</span></div></div>
     </div>
     <div class="meta">
       <span class="chip" id="mode">mode —</span>
-      <span class="chip live" id="live"><span class="dot"></span><span id="liveText">연결 중</span></span>
-      <button class="theme" id="theme" type="button">테마</button>
+      <span class="chip ok live" id="live"><span class="dot"></span><span id="liveText">연결 중</span></span>
+      <button class="btn" id="logsBtn" type="button">전체 로그</button>
+      <button class="btn" id="theme" type="button">테마</button>
     </div>
   </header>
 
   <div class="kpis" id="kpis"></div>
+  <div class="panel pipe" id="pipe"></div>
 
-  <section>
-    <div class="sec-head"><h2>워크플로우</h2><span class="flowhint">흐름: 수정 → PR → 머지 → 적용 → 검증 → 루틴 → 보고서. 지금 하는 작업이 강조됩니다.</span></div>
-    <div class="flow" id="flow"></div>
-  </section>
-
-  <section>
-    <div class="sec-head"><h2>실시간 활동</h2><span class="sub" id="sessionNote"></span></div>
-    <div class="two">
-      <div class="stack">
-        <div class="card"><div class="label">분당 도구 호출 (최근 30분)</div><div id="perMin"></div></div>
-        <div class="card"><div class="label">도구 구성</div><div class="mix" id="mix"></div></div>
+  <div class="main">
+    <div class="col">
+      <div class="panel">
+        <div class="ph"><h2>활동</h2><span class="hint" id="sessionNote"></span></div>
+        <div class="legend" id="mixLegend"></div>
+        <div class="stack" id="mixBar"></div>
+        <div class="chart" id="perMin"></div>
       </div>
-      <div class="card"><div class="label">이벤트 로그 (최신순)</div><div class="stream" id="stream" tabindex="0"></div></div>
     </div>
-  </section>
-
-  <section>
-    <div class="sec-head"><h2>변경 이력</h2><span class="sub">무엇이 어떤 작업으로 바뀌었는지</span></div>
-    <div class="two">
-      <div class="card"><div class="label">날짜별 커밋 (최근 14일)</div><div id="perDay"></div></div>
-      <div class="card"><div class="label">PR</div><div class="hist" id="prs"></div></div>
+    <div class="col">
+      <div class="panel">
+        <div class="ph"><h2>실시간 이벤트</h2><span class="hint">최근 8건</span></div>
+        <div class="rows" id="stream"></div>
+      </div>
     </div>
-  </section>
-
-  <section>
-    <div class="sec-head"><h2>로그</h2></div>
-    <div class="two">
-      <div class="card"><div class="label" id="verifyLabel">verify --live</div><pre id="verifyLog" tabindex="0"></pre></div>
-      <div class="card"><div class="label" id="reportLabel">최근 루틴 보고서</div><pre id="report" tabindex="0"></pre></div>
+    <div class="col">
+      <div class="panel">
+        <div class="ph"><h2>변경 이력</h2><span class="hint" id="prNote"></span></div>
+        <div class="rows" id="prs"></div>
+        <div class="chart" id="perDay" style="min-height:70px;flex:0 0 70px"></div>
+      </div>
+      <div class="panel">
+        <div class="ph"><h2>점검과 알림</h2><span class="hint" id="chkNote"></span></div>
+        <div class="rows" id="checks"></div>
+      </div>
     </div>
-  </section>
+  </div>
 </div>
+
+<dialog id="dlg">
+  <div class="dh"><h2>전체 로그</h2><button class="btn" id="dlgClose" type="button">닫기</button></div>
+  <div class="tabs"><button class="btn" id="tabV" type="button" aria-pressed="true">verify --live</button><button class="btn" id="tabR" type="button" aria-pressed="false">루틴 보고서</button></div>
+  <pre id="dlgPre" tabindex="0"></pre>
+</dialog>
 
 <script>
 (function () {
   const $ = (id) => document.getElementById(id);
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
   const NS = "http://www.w3.org/2000/svg";
-  let lastOk = 0;
+  const svgEl = (n, a) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); return e; };
+  let lastOk = 0, last = null, tab = "v";
 
   try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
   $("theme").onclick = () => {
     const dark = getComputedStyle(document.documentElement).colorScheme.includes("dark");
-    const next = dark ? "light" : "dark";
-    document.documentElement.dataset.theme = next;
+    const next = dark ? "light" : "dark"; document.documentElement.dataset.theme = next;
     try { localStorage.setItem("theme", next); } catch (e) {}
   };
-
-  function ago(iso, now) {
-    const s = Math.max(0, Math.round((now - new Date(iso).getTime()) / 1000));
-    if (s < 60) return s + "초 전"; if (s < 3600) return Math.floor(s / 60) + "분 전";
-    if (s < 86400) return Math.floor(s / 3600) + "시간 전"; return Math.floor(s / 86400) + "일 전";
-  }
-  const hhmmss = (iso) => { const d = new Date(iso), p = (n) => String(n).padStart(2, "0"); return p(d.getHours()) + ":" + p(d.getMinutes()) + ":" + p(d.getSeconds()); };
-
-  function kpi(label, big, note, tone) {
-    const c = el("div", "card kpi");
-    c.append(el("div", "label", label));
-    const b = el("div", "big", big); if (tone) b.style.color = "var(--" + tone + ")";
-    c.append(b, el("div", "note", note));
-    return c;
+  const dlg = $("dlg");
+  $("logsBtn").onclick = () => { fillDlg(); dlg.showModal(); };
+  $("dlgClose").onclick = () => dlg.close();
+  $("tabV").onclick = () => { tab = "v"; fillDlg(); }; $("tabR").onclick = () => { tab = "r"; fillDlg(); };
+  function fillDlg() {
+    $("tabV").setAttribute("aria-pressed", tab === "v"); $("tabR").setAttribute("aria-pressed", tab === "r");
+    const pre = $("dlgPre"); if (!last) { pre.textContent = "데이터를 기다리는 중"; return; }
+    if (tab === "v") pre.replaceChildren(...last.verify.lines.flatMap((l) => [el("span", "l-" + l.split(" ")[0], l), document.createTextNode("\n")]));
+    else pre.textContent = (last.reports[0] || {}).text || "보고서가 아직 없습니다.";
   }
 
-  function bars(host, values, labels, opts) {
-    // one scale for marks, ticks and labels; room in the viewBox for the outermost labels
-    const W = 640, H = 150, L = 28, R = 8, T = 10, B = 22;
-    const max = Math.max(1, ...values), top = Math.max(1, Math.ceil(max / 2) * 2);
-    const svg = document.createElementNS(NS, "svg");
-    svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.setAttribute("width", "100%"); svg.setAttribute("role", "img");
-    svg.setAttribute("aria-label", opts.aria);
-    const x = (i) => L + (i * (W - L - R)) / values.length, bw = (W - L - R) / values.length;
-    const y = (v) => T + (H - T - B) * (1 - v / top);
-    [0, top / 2, top].forEach((t) => {
-      const g = document.createElementNS(NS, "line");
-      g.setAttribute("x1", L); g.setAttribute("x2", W - R); g.setAttribute("y1", y(t)); g.setAttribute("y2", y(t));
-      g.setAttribute("stroke", "var(--line)"); g.setAttribute("stroke-width", 1); svg.append(g);
-      const tx = document.createElementNS(NS, "text"); tx.setAttribute("x", L - 6); tx.setAttribute("y", y(t) + 4);
-      tx.setAttribute("text-anchor", "end"); tx.textContent = Math.round(t); svg.append(tx);
+  const ago = (iso, now) => { const s = Math.max(0, Math.round((now - new Date(iso).getTime()) / 1000));
+    return s < 60 ? s + "초 전" : s < 3600 ? Math.floor(s / 60) + "분 전" : s < 86400 ? Math.floor(s / 3600) + "시간 전" : Math.floor(s / 86400) + "일 전"; };
+  const hms = (iso) => { const d = new Date(iso), p = (n) => String(n).padStart(2, "0"); return p(d.getHours()) + ":" + p(d.getMinutes()) + ":" + p(d.getSeconds()); };
+
+  function kpi(tone, label, value, unit, note) {
+    const c = el("div", "panel kpi " + tone);
+    const k = el("div", "k"); k.append(el("i"), document.createTextNode(label));
+    const v = el("div", "v", value); if (unit) v.append(el("small", null, unit));
+    c.append(k, v, el("div", "n", note)); return c;
+  }
+
+  function bars(host, values, labels, aria, tickL, tickM, tickR) {
+    // one scale for marks, ticks and labels; the viewBox leaves room for the outermost labels
+    const W = 600, H = Math.max(70, host.clientHeight || 120), L = 24, R = 4, T = 8, B = 18;
+    const top = Math.max(2, Math.ceil(Math.max(1, ...values) / 2) * 2), n = values.length, bw = (W - L - R) / n;
+    const x = (i) => L + i * bw, y = (v) => T + (H - T - B) * (1 - v / top);
+    const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, preserveAspectRatio: "xMidYMid meet", role: "img", "aria-label": aria });
+    [0, top].forEach((t) => {
+      svg.append(svgEl("line", { x1: L, x2: W - R, y1: y(t), y2: y(t), stroke: "var(--line)", "stroke-width": 1 }));
+      const tx = svgEl("text", { x: L - 5, y: y(t) + 3.5, "text-anchor": "end" }); tx.textContent = t; svg.append(tx);
     });
     values.forEach((v, i) => {
-      const r = document.createElementNS(NS, "rect");
-      const h = H - B - y(v);
-      r.setAttribute("x", x(i) + 1); r.setAttribute("width", Math.max(1, bw - 2)); r.setAttribute("y", y(v));
-      r.setAttribute("height", Math.max(0, h)); r.setAttribute("rx", 2);
-      r.setAttribute("fill", i === values.length - 1 ? "var(--pink)" : "var(--accent)"); r.setAttribute("opacity", i === values.length - 1 ? 1 : 0.6);
-      const t = document.createElementNS(NS, "title"); t.textContent = labels[i] + ": " + v; r.append(t); svg.append(r);
+      const r = svgEl("rect", { x: x(i) + 1.5, width: Math.max(1, bw - 3), y: y(v), height: Math.max(v ? 2 : 0, H - B - y(v)), rx: 2,
+        fill: "var(--accent)", opacity: i === n - 1 ? 1 : 0.45 });
+      const t = svgEl("title"); t.textContent = labels[i] + ": " + v; r.append(t); svg.append(r);
     });
-    [[0, "start"], [Math.floor(values.length / 2), "middle"], [values.length - 1, "end"]].forEach(([i, a]) => {
-      const tx = document.createElementNS(NS, "text");
-      tx.setAttribute("x", a === "start" ? x(i) : a === "end" ? x(i) + bw : x(i) + bw / 2); tx.setAttribute("y", H - 6);
-      tx.setAttribute("text-anchor", a); tx.textContent = opts.ticks[a]; svg.append(tx);
+    [[0, "start", tickL], [Math.floor(n / 2), "middle", tickM], [n - 1, "end", tickR]].forEach(([i, a, txt]) => {
+      const tx = svgEl("text", { x: a === "start" ? x(i) : a === "end" ? x(i) + bw : x(i) + bw / 2, y: H - 4, "text-anchor": a }); tx.textContent = txt; svg.append(tx);
     });
     host.replaceChildren(svg);
   }
 
   const WRITE = new Set(["Edit", "Write", "NotebookEdit"]);
   function activeNode(events, now) {
-    const recent = events.filter((e) => now - new Date(e.at).getTime() < 90000).slice(-6).reverse();
-    for (const e of recent) {
+    for (const e of events.filter((e) => now - new Date(e.at).getTime() < 90000).slice(-6).reverse()) {
       const t = (e.target || "").toLowerCase();
-      if (/verify\.sh|qa-deny/.test(t)) return "verify";
-      if (/apply\.sh/.test(t)) return "apply";
-      if (/gh pr merge|git merge/.test(t)) return "merge";
-      if (/gh pr|git push/.test(t)) return "pr";
+      if (/verify\.sh|qa-deny/.test(t)) return "verify"; if (/apply\.sh/.test(t)) return "apply";
+      if (/gh pr merge|git merge/.test(t)) return "merge"; if (/gh pr|git push/.test(t)) return "pr";
       if (WRITE.has(e.name) || /git (add|commit|checkout|switch)/.test(t)) return "edit";
     }
     return null;
   }
 
   function render(s) {
-    const now = new Date(s.now).getTime();
-    const v = s.verify.counts, st = s.settings, g = s.git;
-    const prs = s.prs || [];
+    last = s; const now = new Date(s.now).getTime();
+    const v = s.verify.counts, st = s.settings, g = s.git, prs = s.prs || [], ev = s.activity.events, rep = (s.reports || [])[0];
     const open = prs.filter((p) => p.state === "OPEN").length, merged = prs.filter((p) => p.state === "MERGED").length;
-    const rep = (s.reports || [])[0];
     const health = v.FAIL ? "bad" : v.WARN ? "warn" : "ok";
+    $("branch").textContent = g.branch || "—";
+    $("mode").textContent = "mode " + (st.liveMode || "default"); $("mode").className = "chip " + (st.liveMode === "bypassPermissions" ? "warn" : "");
 
-    $("mode").textContent = "mode " + (st.liveMode || "default");
-    $("mode").className = "chip " + (st.liveMode === "bypassPermissions" ? "warn" : "");
+    const tools = ev.filter((e) => e.kind === "tool"), recent = tools.filter((e) => now - new Date(e.at).getTime() < 600000).length;
+    $("kpis").replaceChildren(
+      kpi(health, "설정 상태", v.FAIL + " FAIL", v.WARN + " WARN", "PASS " + v.PASS + " · " + ago(s.verify.at, now)),
+      kpi(st.deny === st.liveDeny && st.ask === st.liveAsk ? "ok" : "warn", "권한 규칙", st.liveDeny + " / " + st.liveAsk, "deny / ask", "repo " + st.deny + " / " + st.ask),
+      kpi(open ? "warn" : "ok", "PR", String(merged), "머지 · " + open + " 열림", "최근 " + prs.length + "개 기준"),
+      kpi("ok", "최근 10분 활동", String(recent), "도구 호출", s.activity.session ? "세션 " + s.activity.session : "세션 로그 없음"));
 
-    const k = $("kpis"); k.replaceChildren(
-      kpi("설정 상태", v.FAIL + " FAIL · " + v.WARN + " WARN", "verify --live · PASS " + v.PASS + " · " + ago(s.verify.at, now), health === "ok" ? "ok" : health),
-      kpi("권한 규칙", st.liveDeny + " / " + st.liveAsk, "deny / ask (적용된 설정) · repo " + st.deny + " / " + st.ask, st.deny === st.liveDeny && st.ask === st.liveAsk ? null : "warn"),
-      kpi("PR", merged + " 머지 · " + open + " 열림", prs.length ? "최근 " + prs.length + "개 기준" : "gh 응답 없음", open ? "warn" : null),
-      kpi("일일 루틴", rep ? rep.name.replace(".md", "") : "—", rep ? "마지막 보고서 " + ago(rep.mtime, now) : "보고서 없음", rep ? null : "warn"));
-
-    const act = activeNode(s.activity.events, now);
-    const lastMerge = g.commits.find((c) => c.pr);
+    const act = activeNode(ev, now), lastMerge = g.commits.find((c) => c.pr);
     const sync = st.mode === st.liveMode && st.deny === st.liveDeny && st.ask === st.liveAsk;
-    const nodes = [
-      ["edit", "수정", "claude/", g.branch + (g.dirty ? " · 변경 " + g.dirty : " · 깨끗함"), g.dirty ? "warn" : "ok"],
+    const steps = [
+      ["edit", "수정", "claude/", g.dirty ? "변경 " + g.dirty + "건" : "깨끗함", g.dirty ? "warn" : "ok"],
       ["pr", "PR", "branch → GitHub", open + "개 열림", open ? "warn" : "ok"],
       ["merge", "머지", "main", lastMerge ? "#" + lastMerge.pr + " · " + ago(lastMerge.at, now) : "—", "ok"],
-      ["apply", "적용", "scripts/apply.sh", sync ? "repo = live" : "repo ≠ live", sync ? "ok" : "bad"],
-      ["live", "적용된 설정", "~/.claude", "mode " + (st.liveMode || "—"), st.liveMode === "bypassPermissions" ? "ok" : "warn"],
-      ["verify", "검증", "verify.sh --live", v.FAIL + " FAIL · " + v.WARN + " WARN", health],
-      ["routine", "일일 루틴", "09:03 daily", rep ? rep.name.replace(".md", "") : "—", rep ? "ok" : "warn"],
-      ["report", "보고서", "reports/", (s.reports || []).length + "개 보관", "ok"],
+      ["apply", "적용", "apply.sh", sync ? "repo = live" : "repo ≠ live", sync ? "ok" : "bad"],
+      ["live", "적용된 설정", "~/.claude", st.liveMode || "—", st.liveMode === "bypassPermissions" ? "ok" : "warn"],
+      ["verify", "검증", "verify.sh", v.FAIL + " FAIL · " + v.WARN + " WARN", health],
+      ["routine", "루틴", "매일 09:03", rep ? rep.name.replace(".md", "") : "—", rep ? "ok" : "warn"],
+      ["report", "보고서", "reports/", (s.reports || []).length + "개", "ok"],
     ];
-    $("flow").replaceChildren(...nodes.map(([id, name, where, val, tone]) => {
-      const n = el("div", "node " + tone + (id === act ? " active" : ""));
-      n.append(el("span", "state"), el("div", "name", name), el("div", "where", where), el("div", "val", val));
-      return n;
+    $("pipe").replaceChildren(...steps.map(([id, nm, wh, vl, tone]) => {
+      const d = el("div", "step " + tone + (id === act ? " active" : "")); const n = el("div", "nm"); n.append(el("i"), document.createTextNode(nm));
+      d.append(n, el("div", "vl", vl), el("div", "wh", wh)); return d;
     }));
 
     // activity
-    const ev = s.activity.events;
-    $("sessionNote").textContent = s.activity.session ? "세션 " + s.activity.session + " · 마지막 기록 " + ago(s.activity.mtime, now) : "세션 로그 없음";
+    $("sessionNote").textContent = s.activity.session ? "마지막 기록 " + ago(s.activity.mtime, now) : "세션 로그 없음";
     const perMin = new Array(30).fill(0);
-    ev.filter((e) => e.kind === "tool").forEach((e) => { const m = Math.floor((now - new Date(e.at).getTime()) / 60000); if (m >= 0 && m < 30) perMin[29 - m]++; });
-    bars($("perMin"), perMin, perMin.map((_, i) => (29 - i) + "분 전"), { aria: "분당 도구 호출 수", ticks: { start: "-30분", middle: "-15분", end: "지금" } });
-    const mix = {}; ev.filter((e) => e.kind === "tool").forEach((e) => { mix[e.name] = (mix[e.name] || 0) + 1; });
-    const rows = Object.entries(mix).sort((a, b) => b[1] - a[1]).slice(0, 6), mx = rows.length ? rows[0][1] : 1;
-    $("mix").replaceChildren(...(rows.length ? rows.map(([n, c]) => {
-      const r = el("div", "mixrow"); const b = el("div", "bar"); const i = el("i"); i.style.width = (c / mx) * 100 + "%"; b.append(i);
-      r.append(el("span", "num", n), b, el("span", "num", String(c))); return r;
-    }) : [el("div", "empty", "최근 도구 호출이 없습니다.")]));
-    $("stream").replaceChildren(...(ev.length ? ev.slice(-80).reverse().map((e) => {
-      const r = el("div", "ev"); r.append(el("time", null, hhmmss(e.at)),
-        el("span", "tool" + (e.kind === "user" ? " user" : WRITE.has(e.name) ? " write" : ""), e.name), el("span", "tgt", e.target)); return r;
-    }) : [el("div", "empty", "이 머신의 세션 로그에서 이벤트를 찾지 못했습니다.")]));
+    tools.forEach((e) => { const m = Math.floor((now - new Date(e.at).getTime()) / 60000); if (m >= 0 && m < 30) perMin[29 - m]++; });
+    const mix = {}; tools.forEach((e) => { mix[e.name] = (mix[e.name] || 0) + 1; });
+    const top = Object.entries(mix).sort((a, b) => b[1] - a[1]), shown = top.slice(0, 4), rest = top.slice(4).reduce((a, b) => a + b[1], 0);
+    if (rest) shown.push(["기타", rest]);
+    const tot = shown.reduce((a, b) => a + b[1], 0) || 1, ops = [1, .75, .55, .4, .25];
+    $("mixBar").replaceChildren(...shown.map(([, c], i) => { const b = el("i"); b.style.width = (c / tot) * 100 + "%"; b.style.background = "var(--accent)"; b.style.opacity = ops[i]; return b; }));
+    $("mixLegend").replaceChildren(...(shown.length ? shown.map(([n, c], i) => { const s2 = el("span"); const d = el("span", null, "● "); d.style.color = "var(--accent)"; d.style.opacity = ops[i]; s2.append(d, document.createTextNode(n), el("b", "num", String(c))); return s2; }) : [el("span", "muted", "최근 도구 호출이 없습니다.")]));
+    bars($("perMin"), perMin, perMin.map((_, i) => (29 - i) + "분 전"), "분당 도구 호출 수", "-30분", "-15분", "지금");
+
+    // events
+    $("stream").replaceChildren(...(ev.length ? ev.slice(-8).reverse().map((e) => {
+      const r = el("div", "row ev"); r.append(el("time", null, hms(e.at)), el("span", "tool" + (e.kind === "user" ? " user" : ""), e.kind === "user" ? "사용자" : e.name), el("span", "t muted", e.target)); return r;
+    }) : [el("div", "empty", "세션 로그에서 이벤트를 찾지 못했습니다.")]));
 
     // history
-    const days = new Array(14).fill(0), labels = [];
-    const day0 = new Date(now); day0.setHours(0, 0, 0, 0);
-    g.commits.forEach((c) => { const d = Math.floor((day0.getTime() - new Date(new Date(c.at).setHours(0, 0, 0, 0))) / 86400000); if (d >= 0 && d < 14) days[13 - d]++; });
-    for (let i = 13; i >= 0; i--) { const d = new Date(day0.getTime() - i * 86400000); labels.push((d.getMonth() + 1) + "/" + d.getDate()); }
-    bars($("perDay"), days, labels, { aria: "날짜별 커밋 수", ticks: { start: labels[0], middle: labels[7], end: labels[13] } });
-    const list = prs.length ? prs.slice(0, 8).map((p) => {
-      const r = el("div", "pr"); const d = el("div", "d");
-      d.append(el("span", "add", "+" + p.additions), document.createTextNode(" "), el("span", "del", "−" + p.deletions), document.createTextNode(" · " + p.changedFiles + "파일 · " + ago(p.mergedAt || p.createdAt, now)));
-      r.append(el("span", "num", "#" + p.number), el("span", "t", p.title), d); return r;
-    }) : g.commits.filter((c) => c.pr).slice(0, 8).map((c) => {
-      const r = el("div", "pr"); r.append(el("span", "num", "#" + c.pr), el("span", "t", c.subject), el("div", "d", ago(c.at, now))); return r;
+    $("prNote").textContent = open + " 열림 · " + merged + " 머지";
+    const list = prs.slice(0, 5).map((p) => {
+      const r = el("div", "row pr"); const t = el("span", "t"); t.append(el("span", "pill" + (p.state === "OPEN" ? " open" : ""), p.state === "OPEN" ? "열림" : "머지"), document.createTextNode(p.title));
+      const d = el("span", "d"); d.append(el("span", "add", "+" + p.additions), document.createTextNode(" "), el("span", "del", "−" + p.deletions));
+      r.append(el("span", "num muted", "#" + p.number), t, d); return r;
     });
     $("prs").replaceChildren(...(list.length ? list : [el("div", "empty", "PR 기록이 없습니다.")]));
+    const days = new Array(14).fill(0), lb = [], d0 = new Date(now); d0.setHours(0, 0, 0, 0);
+    g.commits.forEach((c) => { const d = Math.floor((d0.getTime() - new Date(c.at).setHours(0, 0, 0, 0)) / 86400000); if (d >= 0 && d < 14) days[13 - d]++; });
+    for (let i = 13; i >= 0; i--) { const d = new Date(d0.getTime() - i * 86400000); lb.push((d.getMonth() + 1) + "/" + d.getDate()); }
+    bars($("perDay"), days, lb, "날짜별 커밋 수", lb[0], lb[7], lb[13]);
 
-    // logs
-    $("verifyLabel").textContent = "verify --live · " + hhmmss(s.verify.at);
-    $("verifyLog").replaceChildren(...s.verify.lines.flatMap((l) => [el("span", "l-" + l.split(" ")[0], l), document.createTextNode("\n")]));
-    $("reportLabel").textContent = rep ? "최근 루틴 보고서 · " + rep.name : "최근 루틴 보고서";
-    $("report").textContent = rep ? rep.text : "보고서가 아직 없습니다.";
+    // checks: only what needs attention; the full text is in the dialog
+    const items = [];
+    s.verify.lines.filter((l) => /^(FAIL|WARN)/.test(l)).forEach((l) => items.push([l.split(" ")[0], l.replace(/^(FAIL|WARN)\s+/, "")]));
+    ((rep || {}).text || "").split("\n").filter((l) => /OUTDATED/.test(l)).forEach((l) => items.push(["UP", l.split("|")[0].trim() + " · 업데이트 필요"]));
+    $("chkNote").textContent = items.length ? items.length + "건" : "이상 없음";
+    const rows = items.slice(0, 5).map(([b, t]) => { const r = el("div", "row chk"); r.append(el("span", "badge " + b, b === "UP" ? "UPDATE" : b), el("span", "t", t)); r.lastChild.title = t; return r; });
+    if (!rows.length) { const r = el("div", "row chk"); r.append(el("span", "badge PASS", "PASS"), el("span", "t", "검증 " + v.PASS + "개 통과, 알림 없음")); rows.push(r); }
+    $("checks").replaceChildren(...rows);
+    if (dlg.open) fillDlg();
   }
 
   async function tick() {
-    try {
-      const r = await fetch("/api/state", { cache: "no-store" });
-      render(await r.json()); lastOk = Date.now();
-    } catch (e) { /* keep the last frame; the live chip turns red below */ }
+    try { const r = await fetch("/api/state", { cache: "no-store" }); render(await r.json()); lastOk = Date.now(); } catch (e) { /* keep the last frame */ }
     const fresh = Date.now() - lastOk < 8000;
-    $("live").className = "chip " + (fresh ? "live" : "stale bad");
-    $("liveText").textContent = fresh ? "실시간 · 3초 간격" : "연결 끊김";
+    $("live").className = "chip live " + (fresh ? "ok" : "bad"); $("liveText").textContent = fresh ? "실시간 · 3초" : "연결 끊김";
   }
   tick(); setInterval(tick, 3000);
+  let rz; addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => last && render(last), 150); });
 })();
 </script>
 </body>
