@@ -117,6 +117,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .ev time { font-size: var(--t-xs); color: var(--faint); }
 .ev .badge { justify-self: start; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .pr { grid-template-columns: 36px 68px minmax(0, 1fr) auto; }
+.pr .badge { justify-self: start; }
 .pr .d { font-size: var(--t-xs); color: var(--faint); white-space: nowrap; }
 .add { color: var(--ok); } .del { color: var(--bad); }
 .chk { grid-template-columns: 64px minmax(0, 1fr); }
@@ -125,6 +126,10 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @media (min-width: 1100px) and (max-height: 900px) { #perDay { display: none; } }
 
 dialog { width: min(860px, calc(100vw - 32px)); max-height: 80vh; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--panel); color: var(--fg); padding: var(--s4); font-family: var(--mono); }
+button.proj { width: 100%; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--line); color: inherit; }
+.adv { padding: var(--s2) var(--s3) var(--s3); background: var(--bg); border-bottom: 1px solid var(--line); display: grid; gap: var(--s3); font-size: var(--t-sm); }
+.adv .it { display: grid; gap: 2px; }
+.adv a { color: var(--info); font-size: var(--t-xs); }
 dialog::backdrop { background: rgba(0, 0, 0, .55); }
 dialog .dh { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--s3); }
 dialog h2 { margin: 0; font-size: var(--t-lg); }
@@ -230,20 +235,35 @@ dialog pre .l-FAIL { color: var(--bad); font-weight: 700; } dialog pre .l-WARN {
   const pdlg = $("pdlg");
   $("projBtn").onclick = () => { fillProj(); pdlg.showModal(); }; $("pdlgClose").onclick = () => pdlg.close();
   const bd = (tone, txt) => el("span", "badge " + tone, txt);
+  const open = new Set(), SRC = { memory: "https://code.claude.com/docs/en/memory", "best-practices": "https://code.claude.com/docs/en/best-practices", permissions: "https://code.claude.com/docs/en/permissions" };
+  const ACT = { add: ["info", "추가"], fix: ["warn", "수정"], remove: ["bad", "제거"] };
   function fillProj() {
     const list = (last && last.projects) || [];
-    $("projHint").textContent = list.length ? "읽기 전용: 파일 유무와 줄 수만 읽습니다. 내용은 보내지 않습니다." : "추적할 프로젝트가 없습니다. state/projects.txt에 경로를 한 줄씩 적거나 PROJECT_DIRS를 지정하세요.";
-    const head = el("div", "row proj head"); ["프로젝트", "지침", "Claude 연결", "settings", "규칙", "gitignore"].forEach((t) => head.append(el("span", null, t)));
-    $("projRows").replaceChildren(...(list.length ? [head, ...list.map((p) => {
-      const r = el("div", "row proj"); r.append(el("span", "nm", p.name));
-      if (!p.found) { r.append(bd("bad", "경로 없음")); return r; }
+    $("projHint").textContent = list.length ? "읽기 전용: 파일 유무·줄 수·설정 키만 읽고 내용은 보내지 않습니다. 행을 누르면 무엇을 추가·수정·제거할지 나옵니다." : "추적할 프로젝트가 없습니다. state/projects.txt에 경로를 한 줄씩 적거나 PROJECT_DIRS를 지정하세요.";
+    const head = el("div", "row proj head"); ["프로젝트", "지침", "Claude 연결", "settings", "규칙", "개선"].forEach((t) => head.append(el("span", null, t)));
+    const nodes = [];
+    list.forEach((p) => {
+      const cs = p.checks || [], bad = cs.filter((c) => c.level === "bad").length;
+      const r = el("button", "row proj"); r.type = "button"; r.setAttribute("aria-expanded", open.has(p.name)); r.append(el("span", "nm", p.name));
+      if (!p.found) { r.append(bd("bad", "경로 없음")); nodes.push(r); return; }
       r.append(p.agents ? bd("ok", "AGENTS " + p.agentsLines) : bd("info", "AGENTS 없음"));
       r.append(!p.claude ? bd(p.agents ? "ok" : "warn", p.agents ? "AGENTS 직접" : "지침 없음") : p.imports ? bd("ok", "@AGENTS") : p.agents ? bd("bad", "import 없음") : bd(p.claudeLines > 200 ? "warn" : "ok", "CLAUDE " + p.claudeLines));
       r.append(!p.settings ? bd("warn", "없음") : p.defaultMode ? bd("bad", "defaultMode") : p.denyEnv ? bd("ok", ".env deny") : bd("warn", "deny 없음"));
       r.append(bd(p.rules ? "info" : "", p.rules + "개"));
-      r.append(p.gitignore ? bd("ok", "OK") : bd("warn", "누락"));
-      return r;
-    })] : []));
+      r.append(cs.length ? bd(bad ? "bad" : "warn", cs.length + "건") : bd("ok", "충족"));
+      r.onclick = () => { open.has(p.name) ? open.delete(p.name) : open.add(p.name); fillProj(); };
+      nodes.push(r);
+      if (!open.has(p.name)) return;
+      const box = el("div", "adv");
+      cs.length || box.append(el("div", "empty", "확인한 모든 항목이 모범 사례를 따릅니다."));
+      cs.forEach((c) => {
+        const it = el("div", "it"), t = el("div", null); t.append(bd(ACT[c.act][0], ACT[c.act][1]), el("b", null, " " + c.what));
+        const a = el("a", null, "근거: " + c.src + " 문서"); a.href = SRC[c.src]; a.target = "_blank"; a.rel = "noreferrer";
+        it.append(t, el("div", "muted", "왜: " + c.why), el("div", null, "조치: " + c.fix), a); box.append(it);
+      });
+      nodes.push(box);
+    });
+    $("projRows").replaceChildren(...(list.length ? [head, ...nodes] : []));
   }
   $("tabV").onclick = () => { tab = "v"; fillDlg(); }; $("tabR").onclick = () => { tab = "r"; fillDlg(); };
   function fillDlg() {
