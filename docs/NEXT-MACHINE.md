@@ -244,6 +244,10 @@ RTK 절감 (시점별로 값이 다르다):
 - `PLAN.md`는 원래 계획이다. 실제와 다른 곳(전체 삭제 리셋)은 `PLAN.md` 상단의 정정 메모와 이 문서를 따른다.
 - 예약 작업 `SKILL.md`(첫 컴퓨터 라이브와 저장소 참조본 모두 원본에서 `routines/` 경로 표기가 틀려 있었다). 저장소 참조본은 `claude/routines/daily-update.md`로 고쳤다. 라이브 쪽은 아직 원본 그대로이며 동작에는 영향이 없다 (본문이 곧바로 올바른 경로로 보정한다).
 
+- RTK 훅과 deny 규칙의 상호작용은 미검증이다. 공식 permissions·hooks 문서: PreToolUse 훅이 `updatedInput`으로 명령을 바꾸면 권한 규칙은 Claude가 보낸 원본이 아니라 훅이 돌려준 입력을 기준으로 평가한다. RTK README: 훅은 Bash 명령을 `git status` -> `rtk git status` 식으로 다시 쓴다. 따라서 `Bash(git push --force *)` 같은 deny 패턴이 `rtk git push --force ...`에 매칭되는지 확인되지 않았다. 2026-10-09 deny 시험은 RTK가 없는 컨테이너에서 한 것이라 이 조합을 시험하지 못했다. RTK가 설치된 머신에서 원격 없는 스크래치 저장소로 `git push --force`, `git reset --hard HEAD`가 차단되는지 직접 확인한다. 차단되지 않으면 `rtk ` 접두어 패턴을 추가하거나 샌드박스를 쓴다.
+- deny/ask 규칙은 보안 경계가 아니다(공식 permissions 문서). `/bin/rm -rf`, `bash -c '...'`, `git -C . push`처럼 다른 형태의 호출은 못 막는다. 명령 텍스트와 무관한 강제는 샌드박스(`/sandbox`)로 한다. 샌드박스는 기본 꺼짐이고 macOS, Linux, WSL2에서만 동작하며 네이티브 Windows에서는 명령이 샌드박스 없이 실행된다.
+- 공식 비용 문서 권장 중 미적용: 상태줄로 컨텍스트 사용량 상시 표시(스크립트 필요, 보류), 미사용 MCP 서버 비활성화(`/mcp`, 사용자 조치), 프롬프트 제안 끄기(배경 토큰 소량, 선택).
+
 ## 12. 저장소 이력
 
 - `aac7c5c` feat: global Claude setup v1 (rules, settings, agents, daily routine)

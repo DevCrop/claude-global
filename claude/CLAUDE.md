@@ -7,7 +7,7 @@ Applies to every project on this machine. Project `CLAUDE.md` files add to these
 - State results directly. Separate evidence from inference. Say "I don't know" when that is true.
 
 ## Working method
-- Before coding, restate the request. If it is ambiguous, offer 2-3 readings and ask which one.
+- Before coding, restate the request. If it is ambiguous, give 2 options with the trade-off in 2-3 sentences and ask which one.
 - Change only what the request names. List unrelated issues instead of fixing them silently.
 - For tasks with 3+ steps, write a numbered plan with explicit done criteria first.
 - Never declare completion from the model's own judgment. Confirm with a command result, a test, or a source check, and report what could not be verified.
