@@ -49,4 +49,4 @@ Not verified:
 
 ## Scheduling
 
-Created on the first machine on 2026-10-09. On a new machine, create it in the app's scheduled tasks from `claude/scheduled-tasks/daily-claude-update/SKILL.md` after replacing `<repo>`, and enable it on every machine that should be checked. Each machine writes its own local `reports/`; `state/last-seen.json` is shared through git, so see the pull note in the project `CLAUDE.md`.
+Created on the first machine on 2026-10-09. On a new machine, create it in the app's scheduled tasks from `claude/scheduled-tasks/daily-claude-update/SKILL.md` after replacing `<repo>`, and enable it on every machine that should be checked. Each machine keeps its own `reports/` and `state/last-seen.json` (both gitignored), so counters such as `rtk_total_commands` are only ever compared with the same machine's previous run. A missing file or key means "unknown", not a failure.

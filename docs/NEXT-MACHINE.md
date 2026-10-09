@@ -154,7 +154,7 @@ Ponytail (설치됨, 상시 켜짐):
 - 목적: Claude Code 변경 로그, Anthropic 뉴스, Claude Code와 RTK의 최신 버전을 매일 확인하고 도구 상태(설정 드리프트, rtk PATH, rtk 사용량)를 점검해 보고서만 쓴다. `~/.claude`는 바꾸지 않고 아무것도 설치하지 않는다. 업데이트 명령은 보고서에 적고 사용자가 실행한다.
 - 일정: cron `0 9 * * *` (로컬 09:00, 실제로는 약 09:03에 시작, 몇 분 지연 있음). 상태: 활성(enabled).
 - 정의 파일: `claude/routines/daily-update.md`(단계·출력 형식), `claude/scheduled-tasks/daily-claude-update/SKILL.md`(예약 작업 본문 참조본).
-- 출력: `reports/YYYY-MM-DD.md`(로컬 전용, `.gitignore`), 기준 상태 `state/last-seen.json`(추적됨). 첫 보고서는 `reports/2026-10-09.md`.
+- 출력: `reports/YYYY-MM-DD.md`(로컬 전용, `.gitignore`), 기준 상태 `state/last-seen.json`(머신별, `.gitignore`, 루틴이 만든다). 첫 보고서는 `reports/2026-10-09.md`.
 - 실행 이력: 수동 실행 1회 성공(2026-10-08T15:28Z, 결정에 따라 Haiku). 첫 자동 실행은 2026-10-09T02:37Z(11:37 KST)에 시작했다. 09:03 슬롯이 아니라 2시간 반쯤 늦은 보충 실행이었다. 앱이 꺼져 있었거나 절전 중이었던 것으로 추정되며 원인은 확인하지 못했다. 작성 시점에는 실행 중이었다.
 - 모델 확인: 이 자동 실행 세션은 `claude-sonnet-5-5`, effort medium이었다 (`get_session`). 앱 UI에서 지정한 값인지, 기본 모델(`settings.json`의 sonnet)을 따른 것인지는 구분하지 못했다.
 - 제한: 앱이 켜져 있을 때만 실행된다. 예약 도구에는 모델 필드가 없고, 예약 작업 본문(`SKILL.md`)에도 name, description만 있다.
@@ -163,7 +163,7 @@ Ponytail (설치됨, 상시 켜짐):
   2. 본문 안의 `<repo>`를 새 컴퓨터의 claude-global clone 절대 경로로 바꾼다.
   3. 모델은 앱의 Scheduled 화면에서 Sonnet으로 지정한다.
   4. 한 번 수동 실행해 보고서가 생기는지 확인한다.
-- 두 컴퓨터에서 같은 루틴을 켜도 된다(2026-10-09 결정). `reports/`는 컴퓨터마다 로컬이라 겹치지 않고 각자 설치 상태를 점검한다. 충돌 지점은 git으로 공유되는 `state/last-seen.json` 하나다: `git pull`이 막히면 `git checkout -- state/last-seen.json` 후 pull한다. 이 파일의 `installed_*` 값은 마지막으로 돌린 컴퓨터 기준이다.
+- 두 컴퓨터에서 같은 루틴을 켜도 된다(2026-10-09 결정). `reports/`는 컴퓨터마다 로컬이라 겹치지 않고 각자 설치 상태를 점검한다. `state/last-seen.json`도 머신별 로컬 파일(`.gitignore`)이라 `rtk_total_commands` 같은 값이 다른 컴퓨터 값과 섞이지 않고 `git pull`도 막히지 않는다. 새 컴퓨터는 파일이 없어 첫 실행에서 변경 로그 10개와 "RTK in use: unknown"으로 시작한다.
 - 루틴 절차(`claude/routines/daily-update.md`): `claude --version` → 공식 변경 로그와 Anthropic 뉴스 확인 → 항목 분류(관련/참고/무시) → 보고서 작성 → `last-seen.json` 갱신. 설치·push·`~/.claude` 수정은 하지 않는다.
 
 ## 7. 남은 작업 (순서대로)
@@ -265,7 +265,7 @@ RTK 절감 (시점별로 값이 다르다):
 - 예약 작업 `SKILL.md`(첫 컴퓨터 라이브와 저장소 참조본 모두 원본에서 `routines/` 경로 표기가 틀려 있었다). 저장소 참조본은 `claude/routines/daily-update.md`로 고쳤다. 라이브 쪽은 아직 원본 그대로이며 동작에는 영향이 없다 (본문이 곧바로 올바른 경로로 보정한다).
 
 - RTK 훅과 deny 규칙: 공식 문서상 권한 규칙은 훅이 돌려준 입력을 기준으로 평가되고, RTK는 Bash 명령을 `git status` -> `rtk git status`로 다시 쓴다. 2026-10-09 시뮬레이션 QA(RTK 대신 같은 방식으로 `rtk ` 접두어를 붙이는 모의 훅과 스텁 `rtk`)에서 원래 deny 패턴은 `rtk git push --force origin main`, `rtk git reset --hard HEAD`, `rtk rm -fr ~/x`를 막지 못했고 명령이 실제 실행됐다(훅이 `allow`를 돌려주든 안 주든 동일). Bash deny 패턴 25개를 `rtk ` 접두어로 복제해 53개로 늘린 뒤 같은 시험에서 전부 차단됐고, 대조군 `git status`는 정상 실행됐다. 실제 RTK 바이너리로는 아직 시험하지 못했다(컨테이너에서 `rtk-ai/rtk` 접근 불가). RTK가 설치된 머신에서 `scripts/qa-deny.sh`를 한 번 실행해 전부 PASS인지 확인한다(스크래치 저장소만 쓴다). 이 스크립트는 모의 훅으로 검증했다: 현재 설정은 PASS, 복제 패턴이 없던 이전 설정(`0d28f82`)은 5건 FAIL. 스크립트는 먼저 CLI 없이 Bash deny 패턴마다 `rtk ` 짝이 있는지 정적으로 확인하고(한쪽만 추가하면 FAIL), 이어서 push --force, reset --hard, rm, clean, checkout --, restore 계열과 대조군 `git status`를 실제로 시험한다.
-- `state/last-seen.json`은 루틴이 쓰는 추적 파일이다. 루틴이 도는 머신에서 이 파일이 수정된 채로 `git pull`하면, 같은 줄을 바꾼 커밋(PR #1이 이 파일에 키를 추가했다)과 부딪혀 pull이 중단된다. pull 전에 `git checkout -- state/last-seen.json`으로 로컬 변경을 버리면 된다(루틴이 다음 실행에서 다시 쓴다).
+- `state/last-seen.json`은 머신별 로컬 파일이다(2026-10-09, `.gitignore`와 추적 해제). 이전에는 git으로 공유해서, 루틴이 도는 머신에서 수정된 채 `git pull`하면 같은 줄을 바꾼 커밋과 부딪혀 pull이 중단됐고, 두 컴퓨터가 서로의 `rtk_total_commands`와 비교하는 거짓 신호도 났다. 지금은 두 문제 모두 없다.
 - 서브에이전트는 설정된 advisor를 상속한다(공식 advisor 문서). 2026-10-09 다단계 작업 시험에서 reviewer 2회가 자동 위임됐고 Opus 입력 81.7k토큰이 쓰여 전체 비용(약 0.94 USD)의 약 47%를 차지했다. 메인에는 advisor 호출 기록이 없어 Opus 사용은 reviewer 쪽으로 보이지만 에이전트별로 직접 귀속되지는 않았다(추정).
 - deny/ask 규칙은 보안 경계가 아니다(공식 permissions 문서). `/bin/rm -rf`, `bash -c '...'`, `git -C . push`처럼 다른 형태의 호출은 못 막는다. 명령 텍스트와 무관한 강제는 샌드박스(`/sandbox`)로 한다. 샌드박스는 기본 꺼짐이고 macOS, Linux, WSL2에서만 동작하며 네이티브 Windows에서는 명령이 샌드박스 없이 실행된다.
 - 공식 비용 문서 권장 중 미적용: 미사용 MCP 서버 비활성화(`/mcp`, 사용자 조치), 프롬프트 제안 끄기(배경 토큰 소량, 선택). 상태줄 컨텍스트 표시는 적용함(`jq` 필요).
