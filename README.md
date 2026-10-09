@@ -8,6 +8,7 @@ Source of truth for the global Claude Code setup on this machine (`~/.claude`).
 - `claude/settings.json` — global settings, copied to `~/.claude/settings.json`
 - `claude/RTK.md`, `claude/agents/` — RTK note and subagents, copied to `~/.claude/`
 - `claude/routines/`, `claude/scheduled-tasks/` — daily update routine and the scheduled task body
+- `docs/GUIDE.md` — setup order for a machine and for a project, and the per-task flow
 - `docs/NEXT-MACHINE.md` — full handoff: decisions, links, routine, remaining work, setup order for a new machine
 - `state/last-seen.json` — baseline for the daily routine
 - `scripts/apply.sh` — copies `claude/` into `~/.claude/` with a backup
