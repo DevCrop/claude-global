@@ -16,6 +16,7 @@ HERE = Path(__file__).resolve().parent
 CONFIG = Path(os.environ.get("CLAUDE_CONFIG_DIR", Path.home() / ".claude"))
 PROJECTS = CONFIG / "projects"
 CACHE = {}  # key -> (time, value)
+REFRESHING = set()
 LOCK = threading.Lock()
 
 
@@ -39,16 +40,30 @@ def run(cmd, timeout=60):
         return ""
 
 
-def cached(key, ttl, fn):
+def cached(key, ttl, fn, slow=False, placeholder=None):
+    """Return the cached value. A slow source (verify.sh, gh) refreshes in a thread, so a request never waits on it."""
     now = time.time()
     with LOCK:
         hit = CACHE.get(key)
         if hit and now - hit[0] < ttl:
             return hit[1]
-    val = fn()
-    with LOCK:
-        CACHE[key] = (time.time(), val)
-    return val
+        if slow:
+            if key not in REFRESHING:
+                REFRESHING.add(key)
+                threading.Thread(target=refresh, args=(key, fn), daemon=True).start()
+            return hit[1] if hit else placeholder
+    return refresh(key, fn)
+
+
+def refresh(key, fn):
+    try:
+        val = fn()
+        with LOCK:
+            CACHE[key] = (time.time(), val)
+        return val
+    finally:
+        with LOCK:
+            REFRESHING.discard(key)
 
 
 def git_history():
@@ -149,8 +164,8 @@ def state():
     return {
         "now": datetime.now(timezone.utc).isoformat(),
         "git": cached("git", 5, git_history),
-        "prs": cached("prs", 60, pull_requests),
-        "verify": cached("verify", 60, verify),
+        "prs": cached("prs", 60, pull_requests, slow=True, placeholder=[]),
+        "verify": cached("verify", 60, verify, slow=True, placeholder={"at": datetime.now(timezone.utc).isoformat(), "counts": {"PASS": 0, "FAIL": 0, "WARN": 0}, "lines": ["검증 실행 중..."]}),
         "settings": cached("settings", 5, settings),
         "reports": cached("reports", 30, reports),
         "activity": session_events(),
