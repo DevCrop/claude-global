@@ -2,9 +2,6 @@
   "model": "sonnet",
   "effortLevel": "high",
   "advisorModel": "opus",
-  "autoUpdatesChannel": "latest",
-  "theme": "dark",
-  "enableAllProjectMcpServers": false,
   "permissions": {
     "deny": [
       "Bash(rm -rf /*)",

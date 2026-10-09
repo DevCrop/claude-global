@@ -95,9 +95,7 @@
 - `model`: `sonnet`
 - `effortLevel`: `high` (공식 기본은 medium, xhigh는 토큰 소모 증가. 되돌리려면 `/effort`로 세션 중 변경하거나 이 값을 바꾼다. Sonnet 5.5는 세션 중 변경해도 캐시 유지)
 - `advisorModel`: `opus`
-- `autoUpdatesChannel`: `latest`
-- `theme`: `dark`
-- `enableAllProjectMcpServers`: `false`
+- 제거한 키(공식 settings-reference의 기본값과 같아서 vanilla 기준으로 삭제, 2026-10-09): `autoUpdatesChannel: latest`(미설정 시 latest), `theme: dark`(기본 dark), `enableAllProjectMcpServers: false`(미설정 시 서버마다 승인 요청). 프로젝트 설정이 같은 키를 true로 두면 사용자 설정보다 우선하므로 false를 명시해도 보호가 되지 않는다.
 - `env.ENABLE_PROMPT_CACHING_1H`: 제거함. 공식 문서상 구독 플랜의 메인 대화는 기본이 1시간 TTL이라 중복이고, 이 변수는 서브에이전트·압축 요청까지 1시간으로 올려 쓰기 비용만 늘린다 (짧은 작업에는 손해).
 - `permissions.deny` 53개 (원래 20개 + 변형 우회 8개 + 같은 Bash 패턴 25개를 `rtk ` 접두어로 복제한 것. 아래 함정 절 참고):
   - `Bash(rm -rf /*)`, `Bash(rm -rf ~*)`, `Bash(rm -rf $HOME*)`, `Bash(rm -rf %USERPROFILE%*)`
