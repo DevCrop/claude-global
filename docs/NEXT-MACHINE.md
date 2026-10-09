@@ -28,7 +28,7 @@
 | 에이전트 `reviewer`, `explorer` | 완료, `/context`에서 인식 확인 |
 | RTK 0.50.0 | 완료, 훅 동작 확인 |
 | 일일 루틴 `daily-claude-update` | 완료, 수동 실행 1회 성공, 활성(enabled) |
-| 루틴 모델을 Sonnet으로 | 미완, 앱 UI에서 사용자가 설정 |
+| 루틴 모델 | 첫 자동 실행은 sonnet-5-5로 확인. UI에서 명시 지정은 사용자가 할 일 |
 | CLI 2.1.294 | 대기, npm 최신이 2.1.293 |
 | Archify | 미설치, 다이어그램 요청 시 |
 | Ponytail | 미설치, 의도적 보류 |
@@ -48,7 +48,7 @@
    git clone https://github.com/DevCrop/claude-global.git
    ```
 3. 새 컴퓨터에 기존 `~/.claude`가 있으면 먼저 통째로 백업한다. 덮어쓰기 전에 차이를 본다. 아래 파일을 복사한다.
-   - `claude/CLAUDE.md` → `~/.claude/CLAUDE.md`
+   - `claude/CLAUDE.md` → `~/.claude/CLAUDE.md` (마지막 줄 `@RTK.md`가 아래 `RTK.md`를 import하므로 두 파일을 같은 폴더에 둔다)
    - `claude/RTK.md` → `~/.claude/RTK.md`
    - `claude/settings.json` → `~/.claude/settings.json`
    - `claude/agents/` → `~/.claude/agents/`
@@ -60,7 +60,7 @@
    winget install rtk-ai.rtk
    ```
    - `settings.json`에 RTK 훅(`rtk hook claude`)이 이미 들어 있다. `rtk init -g`를 실행하면 설정이 바뀔 수 있으니 실행 전후 `settings.json` 차이를 비교한다. (`PLAN.md`는 `rtk init -g`를 적었지만, 이미 훅이 들어 있는 현재 상태에서는 필수가 아니다.)
-   - `rtk`가 PATH에 있어야 훅이 동작한다. 첫 컴퓨터에서는 winget 설치 직후 Git Bash PATH에 없었고, 앱 재시작 뒤 잡혔다. 새 터미널·앱 재시작 후 `rtk --version`으로 확인한다.
+   - `rtk`가 PATH에 있어야 훅이 동작한다. 첫 컴퓨터에서는 winget 설치 직후 Git Bash PATH에 없었고, 훅은 앱 재시작 뒤 활성화됐다. 이후 같은 컴퓨터의 세션에서 `command -v rtk`가 WinGet 경로를 찾는 것을 확인했다. 새 컴퓨터에서는 새 터미널·앱 재시작 후 `rtk --version`으로 직접 확인한다.
    - 확인: Bash 명령 몇 개 실행 뒤 `rtk gain`의 Total commands가 늘어난다.
 5. 예약 루틴을 만든다 (섹션 6, 경로 수정 필요).
 6. 섹션 7의 남은 작업을 순서대로 진행한다.
@@ -142,7 +142,8 @@ Ponytail (미설치, 의도적 보류):
 - 일정: cron `0 9 * * *` (로컬 09:00, 실제로는 약 09:03에 시작, 몇 분 지연 있음). 상태: 활성(enabled).
 - 정의 파일: `claude/routines/daily-update.md`(단계·출력 형식), `claude/scheduled-tasks/daily-claude-update/SKILL.md`(예약 작업 본문 참조본).
 - 출력: `reports/YYYY-MM-DD.md`(로컬 전용, `.gitignore`), 기준 상태 `state/last-seen.json`(추적됨). 첫 보고서는 `reports/2026-10-09.md`.
-- 실행 이력: 수동 실행 1회 성공(2026-10-08T15:28Z). 자동 실행은 아직 한 번도 없다. 첫 실행은 결정에 따라 Haiku로 돌렸다.
+- 실행 이력: 수동 실행 1회 성공(2026-10-08T15:28Z, 결정에 따라 Haiku). 첫 자동 실행은 2026-10-09T02:37Z(11:37 KST)에 시작했다. 09:03 슬롯이 아니라 2시간 반쯤 늦은 보충 실행이었다. 앱이 꺼져 있었거나 절전 중이었던 것으로 추정되며 원인은 확인하지 못했다. 작성 시점에는 실행 중이었다.
+- 모델 확인: 이 자동 실행 세션은 `claude-sonnet-5-5`, effort medium이었다 (`get_session`). 앱 UI에서 지정한 값인지, 기본 모델(`settings.json`의 sonnet)을 따른 것인지는 구분하지 못했다.
 - 제한: 앱이 켜져 있을 때만 실행된다. 예약 도구에는 모델 필드가 없고, 예약 작업 본문(`SKILL.md`)에도 name, description만 있다.
 - 새 컴퓨터에서 만들기:
   1. Claude 앱의 예약 작업 기능으로 `daily-claude-update`를 만들고 본문에 `SKILL.md` 내용을 넣는다.
@@ -154,7 +155,7 @@ Ponytail (미설치, 의도적 보류):
 
 ## 7. 남은 작업 (순서대로)
 
-1. 루틴 모델을 Sonnet으로 설정 (앱 UI). 다음 자동 실행(09:03 이후)의 세션에서 모델이 sonnet인지 확인한다.
+1. 루틴 모델을 Sonnet으로 고정 (앱 UI). 첫 자동 실행은 sonnet-5-5로 돌았지만 그것이 UI 설정 때문인지 기본값 때문인지 모른다. UI에서 명시적으로 지정한 뒤, 내일 이후 자동 실행 세션의 모델을 `get_session`으로 다시 확인한다.
 2. CLI 2.1.294: npm에 올라오면 업데이트. 승인 필요. 확인: `claude --version`.
    ```bash
    npm install -g --prefix "C:/Users/edn_y/AppData/Roaming/npm" @anthropic-ai/claude-code@latest
@@ -202,7 +203,8 @@ RTK 절감 (시점별로 값이 다르다):
 - 훅 동작 확인: `git status` 1회에 Total commands가 99에서 100으로 증가.
 
 미확인:
-- 루틴이 Sonnet으로 도는지. 다음 자동 실행 이후에만 확인 가능.
+- 루틴이 Sonnet으로 "고정"됐는지. 첫 자동 실행이 sonnet-5-5였다는 것만 확인했다 (섹션 6).
+- 첫 자동 실행이 09:03에 못 돌고 11:37에 돈 정확한 원인.
 - 새 컴퓨터에서의 모든 단계. 이 문서는 읽어서 검토했을 뿐 새 컴퓨터에서 실행해 보지 않았다.
 - 입문 가이드 글의 수치와 외부 URL 유효성.
 
