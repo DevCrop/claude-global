@@ -6,12 +6,14 @@ Source of truth for the global Claude Code setup on this machine (`~/.claude`).
 
 - `claude/CLAUDE.md` — global rules, copied to `~/.claude/CLAUDE.md`
 - `claude/settings.json` — global settings, copied to `~/.claude/settings.json`
-- `claude/RTK.md`, `claude/agents/` — RTK note and subagents, copied to `~/.claude/`
+- `claude/RTK.md`, `claude/agents/`, `claude/skills/` — RTK note, subagents (`explorer`, `reviewer`, `worker`) and skills (`orchestrate`, `project-setup`), copied to `~/.claude/`
 - `claude/routines/`, `claude/scheduled-tasks/` — daily update routine and the scheduled task body
 - `docs/GUIDE.md` — setup order for a machine and for a project, and the per-task flow
 - `docs/NEXT-MACHINE.md` — full handoff: decisions, links, routine, remaining work, setup order for a new machine
 - `state/last-seen.json` — per-machine baseline for the daily routine (gitignored, created by the routine)
 - `scripts/apply.sh` — copies `claude/` into `~/.claude/` with a backup
+- `scripts/verify.sh` — read-only checks: repo, `--live` for this machine's applied state, `--full` adds the deny/ask QA
+- `scripts/docs-watch.sh` — diffs the official docs pages this setup depends on (used by the daily routine)
 - `scripts/qa-deny.sh` — checks that the deny rules still block dangerous commands on this machine, with hooks such as rtk active
 
 Runtime data (credentials, session history, auto-memory, plugins, caches) is never stored here. See `.gitignore`.
@@ -28,4 +30,4 @@ Run `bash scripts/qa-deny.sh` on each machine after `apply.sh`. It first checks 
 
 ## Status
 
-Applied on the first machine (2026-10-09). Not yet run on Mac or Windows Git Bash. Continue on another machine with `docs/NEXT-MACHINE.md`.
+Applied on the first machine and verified on a Mac earlier (2026-10-09); the permissions, agents, skills, verify and routine changes after that are untested on Windows Git Bash and macOS. On each machine run the steps in `docs/GUIDE.md` and `bash scripts/verify.sh --live`.

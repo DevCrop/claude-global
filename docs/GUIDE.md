@@ -6,8 +6,8 @@ End-to-end order for a machine and a project. Sources: Claude Code docs (best-pr
 
 | Layer | What | Where |
 |---|---|---|
-| Always on, every machine | RTK hook, Ponytail plugin, permissions (deny, ask, bypass mode disabled), short global `CLAUDE.md`, status line, agents `explorer` `reviewer` `worker` | this repo, applied to `~/.claude` |
-| On demand | `orchestrate` skill (description match, or `/orchestrate`); Superpowers plugin in project or local scope only; AO as an external app | skills, plugin scope, the user |
+| Always on, every machine | RTK hook, Ponytail plugin, permissions (deny, ask, bypass mode disabled), short global `CLAUDE.md`, status line, agents `explorer` `reviewer` `worker`, daily routine | this repo, applied to `~/.claude` |
+| On demand | skill `orchestrate` (description match, or `/orchestrate`), skill `project-setup` (manual, `/project-setup`), Superpowers plugin in project or local scope only, AO as an external app | skills, plugin scope, the user |
 | Per project, once | project `CLAUDE.md`, path-scoped rules, verification command, project permissions | the project's `.claude/` |
 
 Never install Superpowers at user scope: an enabled plugin is part of every session, and its SessionStart hook injects the bootstrap each time (plugins doc).
@@ -28,31 +28,33 @@ Done when every command prints a value. No path is hard-coded anywhere; only the
 
 ```
 git pull
-bash scripts/apply.sh            # backs up first, copies claude/ items
-bash scripts/qa-deny.sh          # needs the claude CLI; run it where RTK is installed
+bash scripts/apply.sh            # backs up first, copies the items listed in apply.sh
 claude plugin marketplace add DietrichGebert/ponytail
 claude plugin install ponytail@ponytail
 ```
 
-Open a new session (running sessions do not get the plugin). Done when:
-- `qa-deny.sh` prints `all checks passed`
-- `claude plugin list` shows `ponytail@ponytail` enabled and `~/.claude/.ponytail-active` is `full`
-- `rtk gain` total commands grows after a few Bash calls
-- the status line shows `[model] N% context`
-- `/context` lists the global `CLAUDE.md`
+Open a new session (running sessions do not get the plugin), then verify:
+
+```
+bash scripts/verify.sh --live    # repo checks + applied files equal claude/ + tools + Ponytail
+bash scripts/verify.sh --full    # also runs qa-deny.sh (claude CLI + haiku); run it where RTK is installed
+```
+
+Done when `verify.sh --live` prints `0 FAIL`. WARN lines are informational (for example no `.ponytail-active` flag before the first new session). Then spot-check by hand: `rtk gain` total commands grows after a few Bash calls, the status line shows `[model] N% context`, `/context` lists the global `CLAUDE.md`, and `claude plugin details ponytail` shows its always-on token cost.
 
 Undo: copy files back from `~/.claude-backup-<timestamp>/`.
 
 ## 2. Bootstrap a project (once, before the first task)
 
-Do it by hand for the first projects; automate only what you repeat.
+Run `/project-setup` in the project directory (manual-only skill). It reads manifests, CI workflows and lint configs, finds the verification command per area, and proposes `CLAUDE.md`, `.claude/rules/*.md` and `.claude/settings.json` as files for you to approve. It installs nothing and invents no commands; what it cannot confirm is listed under "Not verified". Writes under `.claude/` ask for your approval.
 
-1. In the project directory run `claude`, then `/init`, then `/doctor` to cut what Claude can derive from the code. Target: under 200 lines. For each line ask whether removing it would cause a mistake.
-2. Decide the verification first and write the command in `CLAUDE.md`: tests, lint and type check for backend; build plus screenshot comparison for frontend; browser screenshot comparison plus lint for markup and CSS. Without a check Claude can run, "done" is only its own opinion.
-3. Split rules by area in `.claude/rules/*.md` with `paths:` globs (for example styles and templates, frontend, backend). Keep only rules that apply everywhere in `CLAUDE.md`.
-4. Pre-approve routine read-only commands with `/permissions` (add the `rtk ` twin of each Bash rule). On macOS, Linux and WSL2 consider `/sandbox`.
-5. Feature-development projects only: install Superpowers from `/plugin` and pick project or local scope. Skip it for markup-only or small-fix projects.
-6. Check: `/context` shows the project `CLAUDE.md`, `/hooks` lists only intended hooks, `claude plugin list` shows the scope you chose.
+What to check afterwards:
+1. `CLAUDE.md` is under 200 lines and every line would cause a mistake if removed (`/doctor` proposes cuts).
+2. The verification commands are the ones CI or the scripts really run. For markup and CSS with no automated check, decide on a screenshot comparison or a lint and write it down; without a check Claude can run, "done" is only its own opinion.
+3. Path-scoped rules use the documented frontmatter, a YAML `paths:` list (the only field Claude Code reads in a rule).
+4. Permissions list only read-only check commands; each Bash rule has its `rtk ` twin where RTK is installed.
+5. Feature-development projects only: `claude plugin install superpowers@claude-plugins-official --scope local` (`--scope project` shares it; each collaborator installs it themselves). Skip it for markup-only or small-fix projects. Not user scope.
+6. In a new session: `/context` shows the project `CLAUDE.md`, `/hooks` lists only intended hooks.
 
 ## 3. Per task
 
@@ -67,18 +69,21 @@ Do it by hand for the first projects; automate only what you repeat.
 
 Habits: `/clear` between unrelated tasks; after two failed corrections on one issue, `/clear` and restate the task; `/rewind` to undo; changes go through a branch and a PR and a person merges.
 
-## 4. Maintenance
+## 4. Daily routine and maintenance
 
-- Monthly: `/doctor` on `CLAUDE.md`, skills and agents; `claude --version` against the changelog.
-- After any change to permissions or hooks: `bash scripts/qa-deny.sh` on every machine where RTK is installed.
+- The routine `daily-claude-update` runs `claude --version`, the changelog, `scripts/verify.sh --live`, and `scripts/docs-watch.sh` (eight official docs pages this setup depends on), then writes `reports/YYYY-MM-DD.md` and proposes changes. It only reads and reports. Steps live in `claude/routines/daily-update.md` and are read from the clone, so `git pull` updates them.
+- On each machine create the scheduled task in the app once, from the pointer body in `claude/scheduled-tasks/daily-claude-update/SKILL.md` (replace `<repo>` with that machine's clone path). If the app still holds the older body with the full list of steps, replace it with the pointer body.
+- Monthly: `/doctor` on `CLAUDE.md`, skills and agents.
+- After any change to permissions or hooks: `bash scripts/verify.sh --full` on every machine where RTK is installed.
 - Edit `claude/` in this repo, never `~/.claude` directly.
 
 ## Not verified
 
-- Windows Git Bash and macOS behavior of `apply.sh`, the plugin hooks and `qa-deny.sh` with the real RTK hook (tested only on Linux without RTK).
-- Superpowers install flow at project scope, and the exact `paths:` syntax (read it in the memory doc when writing the first rule).
-- Whether `orchestrate` is loaded by description matching often enough; `/orchestrate` is the fallback.
+- Windows Git Bash and macOS behavior of `apply.sh`, `verify.sh`, the plugin hooks and `qa-deny.sh` with the real RTK hook (tested on Linux without RTK).
+- The `claude plugin list` output format that `verify.sh` parses for the Ponytail status; a changed format shows up as a WARN, not a false PASS.
+- Superpowers' hook on Windows Git Bash, and how often `orchestrate` is loaded by description matching (`/orchestrate` is the fallback).
+- `project-setup` was dry-run once on a scratch PHP + React project; the interactive approval flow and real projects are untested.
 
 ## Deliberately not adopted
 
-User-scope Superpowers, agent teams (experimental), agent view (research preview), hook-based intent detection, global Stop hook or `/goal` gate (enable per project once it has tests), a daily proposal loop (add it when a concrete need shows up).
+User-scope Superpowers, agent teams (experimental), agent view (research preview), hook-based intent detection, a global Stop hook or `/goal` gate (enable per project once it has tests), a daily proposal loop that mines session logs.

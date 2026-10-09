@@ -26,7 +26,9 @@
 |---|---|
 | 전역 규칙 `claude/CLAUDE.md`, `RTK.md` | 완료, 첫 컴퓨터에 적용됨 |
 | `claude/settings.json` | 완료, deny 동작 확인됨 |
-| 에이전트 `reviewer`, `explorer` | 완료, `/context`에서 인식 확인 |
+| 에이전트 `reviewer`, `explorer`, `worker` | `reviewer`·`explorer`는 `/context`에서 인식 확인. `worker`와 `maxTurns`는 머신에서 아직 확인 전 |
+| 스킬 `orchestrate`, `project-setup` | 추가됨(2026-10-09). `project-setup`은 스크래치 프로젝트 1건 드라이런만 했다. 머신 적용 후 `verify.sh --live`로 확인 |
+| 검증 `scripts/verify.sh` | 추가됨. `--live`가 적용 상태·도구·Ponytail을 한 번에 점검한다 |
 | RTK | 첫 컴퓨터 0.50.0에서 훅 동작 확인. 최신 0.51.0(2026-10-09 조회)로 업데이트 필요 |
 | 일일 루틴 `daily-claude-update` | 완료, 수동 실행 1회 성공, 활성(enabled) |
 | 루틴 모델 | 첫 자동 실행은 sonnet-5-5로 확인. UI에서 명시 지정은 사용자가 할 일 |
@@ -34,7 +36,7 @@
 | 상태줄 `statusLine` | 모델과 컨텍스트 %를 표시. `jq`가 PATH에 있어야 한다 (섹션 2의 4단계) |
 | Archify | 미설치, 다이어그램 요청 시 |
 | Ponytail | 설치됨, 상시 켜짐 (2026-10-09 결정). `settings.json`의 `enabledPlugins`로 활성 |
-| 프로젝트 셋업·최적화 | 나중 단계 |
+| 프로젝트 셋업 | `/project-setup` 스킬 + `docs/GUIDE.md` 2단계. 실제 프로젝트에서 한 번 써 보는 것이 남음 |
 
 소스 오브 트루스는 이 저장소(`DevCrop/claude-global`, branch `main`)다. 라이브 설정은 `~/.claude`이며 `claude/` 폴더에서 복사해 만든다.
 
@@ -167,18 +169,19 @@ Ponytail (설치됨, 상시 켜짐):
   3. 모델은 앱의 Scheduled 화면에서 Sonnet으로 지정한다.
   4. 한 번 수동 실행해 보고서가 생기는지 확인한다.
 - 두 컴퓨터에서 같은 루틴을 켜도 된다(2026-10-09 결정). `reports/`는 컴퓨터마다 로컬이라 겹치지 않고 각자 설치 상태를 점검한다. `state/last-seen.json`도 머신별 로컬 파일(`.gitignore`)이라 `rtk_total_commands` 같은 값이 다른 컴퓨터 값과 섞이지 않고 `git pull`도 막히지 않는다. 새 컴퓨터는 파일이 없어 첫 실행에서 변경 로그 10개와 "RTK in use: unknown"으로 시작한다.
-- 루틴 절차(`claude/routines/daily-update.md`): `claude --version` → 공식 변경 로그와 Anthropic 뉴스 확인 → 항목 분류(관련/참고/무시) → 보고서 작성 → `last-seen.json` 갱신. 설치·push·`~/.claude` 수정은 하지 않는다.
+- 루틴 절차(`claude/routines/daily-update.md`): `claude --version` → 공식 변경 로그와 Anthropic 뉴스 확인 → 항목 분류 → 도구 버전 → `scripts/verify.sh --live`(적용 상태·도구·Ponytail) → `scripts/docs-watch.sh`(공식 문서 8페이지 변경) → 보고서 작성 → `last-seen.json` 갱신. 설치·push·`~/.claude` 수정은 하지 않는다.
 
 ## 7. 남은 작업 (순서대로)
 
-0. PR #1(`claude/add-apply-script`) 머지 후, 각 컴퓨터에서 아래 순서로 실행하고 결과를 기록한다. 맥과 Windows Git Bash에서 각각 한 번씩.
+0. 각 컴퓨터(Mac, Windows Git Bash)에서 `docs/GUIDE.md` 1단계를 실행하고 결과를 기록한다. 핵심 확인은 한 줄이다.
    ```bash
    git pull && bash scripts/apply.sh
-   command -v jq            # 상태줄에 필요. 없으면 설치 (섹션 2의 4단계)
-   bash scripts/qa-deny.sh  # RTK가 설치된 머신에서. 실제 RTK로는 첫 검증
+   bash scripts/verify.sh --live    # 0 FAIL이어야 한다. WARN은 참고
+   bash scripts/verify.sh --full    # RTK가 설치된 머신에서. 실제 RTK 훅으로는 첫 검증
    ```
-   - FAIL이 나오면 출력 전체를 남기고 deny 패턴을 고친 뒤 다시 실행한다.
-   - RTK는 0.51.0으로 올린다.
+   - FAIL이 나오면 출력 전체를 남기고 원인(적용 누락, 도구 누락, deny 패턴)을 고친 뒤 다시 실행한다.
+   - RTK는 최신으로 올린다(루틴 보고서의 명령).
+   - 예약 작업 본문을 앱에서 `claude/scheduled-tasks/daily-claude-update/SKILL.md`의 포인터 본문으로 교체한다(`<repo>` 치환). 단계는 저장소의 `daily-update.md`를 읽으므로 이후에는 `git pull`만으로 갱신된다.
    - 결정 대기: advisor(Opus) 전역 유지 여부(섹션 9의 비용 측정, 메인 호출의 약 3.6배).
 
 1. 루틴 모델을 Sonnet으로 고정 (앱 UI). 첫 자동 실행은 sonnet-5-5로 돌았지만 그것이 UI 설정 때문인지 기본값 때문인지 모른다. UI에서 명시적으로 지정한 뒤, 내일 이후 자동 실행 세션의 모델을 `get_session`으로 다시 확인한다.
@@ -189,7 +192,7 @@ Ponytail (설치됨, 상시 켜짐):
    (첫 컴퓨터는 `--prefix "C:/Users/edn_y/AppData/Roaming/npm"`이 필요했다.)
 3. Archify: 다이어그램이 필요할 때만 (섹션 5).
 4. Ponytail: 상시 사용. 새 컴퓨터에서는 섹션 5의 설치 명령으로 설치하고 `/ponytail`로 모드를 확인한다.
-5. 프로젝트 셋업·최적화: 별도 계획으로. 컨텍스트에서 큰 비중은 시스템 도구와 MCP 도구이며 Chrome 연동·Browser 도구가 많다. 쓰지 않는 커넥터를 끄는 것이 후보다.
+5. 프로젝트 셋업: 실제 프로젝트 하나에서 `/project-setup`(`docs/GUIDE.md` 2단계)을 써 보고 결과를 기록한다. 컨텍스트에서 큰 비중은 시스템 도구와 MCP 도구이며 Chrome 연동·Browser 도구가 많다. 쓰지 않는 커넥터를 끄는 것이 후보다.
 6. `reports/` 버전 관리: 현재 로컬 전용으로 결정함 (섹션 10).
 
 ## 8. 링크 모음
