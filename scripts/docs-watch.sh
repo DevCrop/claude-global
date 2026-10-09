@@ -14,7 +14,7 @@ update=0
 
 command -v curl >/dev/null 2>&1 || { echo "curl not found" >&2; exit 2; }
 mkdir -p "$cache"
-tmp="$(mktemp)"
+tmp="$(mktemp "${TMPDIR:-/tmp}/docs-watch.XXXXXX")"
 trap 'rm -f "$tmp"' EXIT
 
 for p in $pages; do
