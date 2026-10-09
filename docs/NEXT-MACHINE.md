@@ -81,10 +81,7 @@
 
 저장소에 없고, 새 컴퓨터로 옮기지 않는 것들이다.
 
-백업 (첫 컴퓨터 `D:\backup` 아래):
-- `D:\backup\claude-20261008`: `~/.claude` 전체. `.git`, `.credentials.json`, `projects/`를 포함하고 `~/.claude.json` 사본도 있다.
-- `D:\backup\claude-20261009-projects`: `projects/` 스냅샷 (51개 파일, 대화 기록).
-- `D:\backup\settings.before-rtk-20261009.json`: RTK 훅을 넣기 전의 `settings.json`.
+백업: 2026-10-10에 `D:ackup` 전체와 `~/.claude-backup-*`를 삭제했다. 되돌릴 사본은 없다. `apply.sh`는 실행할 때마다 `~/.claude-backup-<시각>`를 새로 만든다.
 
 레거시 리셋 (첫 컴퓨터에서 한 번, 스크립트는 저장소에서 제거함):
 - 설정 계층만 지웠다. 원래 계획의 "전부 삭제"는 실행하지 않았다.
