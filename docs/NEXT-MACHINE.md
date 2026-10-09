@@ -252,7 +252,7 @@ RTK 절감 (시점별로 값이 다르다):
 - 루틴 모델은 첫 실행만 Haiku, 이후 Sonnet.
 - `/context`, `/usage` 같은 슬래시 명령은 사용자가 직접 실행해야 한다 (대화형 UI 명령).
 - 변경은 브랜치와 PR로 올리고 머지는 사람이 한다. 자동 머지는 요청할 때만. push는 사용자 승인 후이고 force push는 쓰지 않는다. (삭제한 원래 계획 문서의 결정을 옮겨 적음)
-- Orchestrator.inc(AO) 도입: 여러 코딩 에이전트를 동시에 병렬 실행하는 작업 패턴이 있어 도입하기로 함. 단, 워커 생성 시 permission mode는 반드시 `default`로 둔다. 근거와 가드레일은 섹션 13.
+- Orchestrator.inc(AO): 도입 후보, 확정 아님(2026-10-09). 핵심 경로(실제 작업 완료)를 데스크톱 네이티브에서 확인하지 못했고, Claude Code 자체의 worktree·`isolation: worktree` 서브에이전트와 비교하지 않았다. 가드레일(bypass 모드 차단)은 `permissions.disableBypassPermissionsMode`로 설정에서 강제한다. 근거는 섹션 13.
 
 ## 11. 함정과 주의사항
 
@@ -285,12 +285,12 @@ RTK 절감 (시점별로 값이 다르다):
 
 ### 도입 판단
 
-- 작업 패턴이 "같은 레포에서 에이전트 여러 개를 동시에 병렬 실행"에 해당해 도입하기로 함.
+- 작업 패턴이 "같은 레포에서 에이전트 여러 개를 동시에 병렬 실행"에 해당해 후보로 둔다. 확정 조건: (1) 데스크톱 네이티브에서 실제 작업 하나가 끝까지 도는 것을 확인, (2) Claude Code 자체 worktree(`claude --worktree` 계열)·`isolation: worktree` 서브에이전트로는 왜 부족한지 한 번 비교. 둘 다 아직 하지 않았다.
 - AO는 배포 기능이 없다. 레포 전체에서 "deploy"가 나오는 곳은 AO 자신의 클라우드 컨트롤플레인 배포 문서(`docs/cloud-development.md`)뿐이고, 사용자 앱을 배포하는 기능은 없다. "빠른 배포"가 목적이면 AO는 그 부분을 해결하지 않는다. PR이 올라간 뒤의 배포는 Vercel/Netlify 같은 별도 CI/CD가 맡아야 한다.
 
 ### 가드레일 (필수)
 
-- **워커/프로젝트의 permission 설정은 반드시 `default`로 둔다.** `bypassPermissions`를 선택하면 `claude`가 `--permission-mode bypassPermissions`로 실행되어 `claude/settings.json`의 deny 규칙이 전부 무시된다. 이건 Claude Code 자체 기능을 AO가 그대로 노출한 것이라 AO의 결함은 아니지만, 실수로 고르면 하네스가 무력화된다.
+- **bypass 모드는 설정에서 막는다 (사람의 기억에 맡기지 않는다).** `claude/settings.json`의 `permissions.disableBypassPermissionsMode: "disable"`(공식 permissions 문서, 어느 settings 범위에서나 동작. 별도 PR `claude/permissions-hardening`)을 켜면 아래 위험이 설정으로 막힌다. 워커/프로젝트 permission 설정은 계속 `default`로 둔다. `bypassPermissions`를 선택하면 `claude`가 `--permission-mode bypassPermissions`로 실행되어 `claude/settings.json`의 deny 규칙이 전부 무시된다. 이건 Claude Code 자체 기능을 AO가 그대로 노출한 것이라 AO의 결함은 아니지만, 실수로 고르면 하네스가 무력화된다.
   - 코드 근거: `backend/internal/adapters/agent/claudecode/claudecode.go`의 `permissionConfigEnum`, `backend/pkg/agentruntime/command.go`의 `ClaudePermissionArgs` (`default`는 플래그 자체를 안 붙여 `~/.claude/settings.json`을 그대로 따름).
 - 텔레메트리(`AO_TELEMETRY_EVENTS`, `AO_TELEMETRY_REMOTE`)는 기본 꺼짐. 클라우드 오퍼링(`AO_CLOUD_OFFERING`, `api.aoagents.dev`)은 가입해야 쓰임. 둘 다 그대로 둬도 영향 없음.
 - 데몬은 `127.0.0.1`에만 bind하고 `AO_HOST` 환경변수가 의도적으로 없음 (`backend/internal/config/config.go`). 터미널 WebSocket(`/mux`)은 Origin이 정확히 허용 목록 또는 loopback(`localhost`/`127.0.0.1`/`[::1]`)인 경우만 연결 허용, 그 외 403 (`backend/internal/httpd/cors.go`의 `isLoopbackOrigin`).
