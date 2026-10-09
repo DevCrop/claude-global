@@ -5,39 +5,37 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Claude Global Workflow</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
 <style>
-/* Direction from Sentry's DESIGN.md (inspiration, not a copy): midnight-violet canvas, hairline borders, no shadows,
-   pink for the live data point, one lime keyword highlight, uppercase tracked labels, 8px spacing base.
-   Layout: one column of sections; summary first, then workflow flow, live activity, history, logs. */
+/* Direction: Claude's own look. Warm paper canvas, near-black ink, one terracotta accent, serif display over a plain sans,
+   hairline borders, no shadows. Layout: one column of sections; summary first, then workflow flow, live activity, history, logs. */
 :root {
-  --bg: #f6f5f9; --panel: #ffffff; --line: #e3e0ec; --fg: #1f1633; --muted: #5d5470; --faint: #8a8399;
-  --accent: #6a5fc1; --accent-soft: #ece9fa; --pink: #d9457c; --lime: #c2ef4e; --lime-ink: #1f1633;
-  --ok: #17803d; --ok-soft: #e2f4e8; --warn: #a66100; --warn-soft: #fbefd5; --bad: #c0332b; --bad-soft: #fae3e1;
-  --display: "Space Grotesk", "Rubik", "IBM Plex Sans KR", "Malgun Gothic", system-ui, sans-serif;
-  --sans: "Rubik", "IBM Plex Sans KR", "Malgun Gothic", -apple-system, system-ui, "Segoe UI", sans-serif;
-  --mono: Monaco, Menlo, "Ubuntu Mono", Consolas, monospace;
+  --bg: #faf9f5; --panel: #ffffff; --line: #e8e6dc; --fg: #141413; --muted: #5e5d59; --faint: #8a887f;
+  --accent: #d97757; --accent-soft: #f6e6de; --pink: #c6613f;
+  --ok: #4d7c47; --ok-soft: #e6efe1; --warn: #a2650f; --warn-soft: #f7ecd2; --bad: #b53333; --bad-soft: #f6e0dc;
+  --display: "Source Serif 4", "Tiempos Text", Georgia, "IBM Plex Sans KR", "Malgun Gothic", serif;
+  --sans: system-ui, -apple-system, "Segoe UI", "IBM Plex Sans KR", "Malgun Gothic", sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", Consolas, Menlo, monospace;
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 48px;
-  --r-xs: 4px; --r-md: 8px; --r-xl: 12px;
-  --t-xs: 12px; --t-sm: 14px; --t-md: 16px; --t-lg: 20px; --t-xl: 30px;
+  --r-xs: 6px; --r-md: 8px; --r-xl: 14px;
+  --t-xs: 12px; --t-sm: 14px; --t-md: 15px; --t-lg: 22px; --t-xl: 30px;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #150f23; --panel: #1f1633; --line: #362d59; --fg: #ffffff; --muted: #bdb8c0; --faint: #8a8296;
-  --accent: #a99cf0; --accent-soft: #2f2556; --pink: #fa7faa;
-  --ok: #7ad99a; --ok-soft: #173325; --warn: #e8b35c; --warn-soft: #3a2d14; --bad: #ff8f86; --bad-soft: #432024; color-scheme: dark; } }
+  --bg: #262624; --panel: #30302e; --line: #44433f; --fg: #faf9f5; --muted: #c2c0b6; --faint: #8f8d84;
+  --accent: #d97757; --accent-soft: #432f27; --pink: #e8906f;
+  --ok: #8fc287; --ok-soft: #26352a; --warn: #e3b25f; --warn-soft: #3d3220; --bad: #f08c82; --bad-soft: #432724; color-scheme: dark; } }
 :root[data-theme="dark"] {
-  --bg: #150f23; --panel: #1f1633; --line: #362d59; --fg: #ffffff; --muted: #bdb8c0; --faint: #8a8296;
-  --accent: #a99cf0; --accent-soft: #2f2556; --pink: #fa7faa;
-  --ok: #7ad99a; --ok-soft: #173325; --warn: #e8b35c; --warn-soft: #3a2d14; --bad: #ff8f86; --bad-soft: #432024; color-scheme: dark; }
+  --bg: #262624; --panel: #30302e; --line: #44433f; --fg: #faf9f5; --muted: #c2c0b6; --faint: #8f8d84;
+  --accent: #d97757; --accent-soft: #432f27; --pink: #e8906f;
+  --ok: #8fc287; --ok-soft: #26352a; --warn: #e3b25f; --warn-soft: #3d3220; --bad: #f08c82; --bad-soft: #432724; color-scheme: dark; }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--fg); font: 400 var(--t-md)/1.5 var(--sans); }
 .wrap { max-width: 1200px; margin: 0 auto; padding: var(--s6) var(--s4); display: flex; flex-direction: column; gap: var(--s6); }
 header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s3); }
-h1 { margin: 0; font-family: var(--display); font-size: 44px; line-height: 1.1; font-weight: 700; text-wrap: balance; }
-h1 mark { background: var(--lime); color: var(--lime-ink); padding: 0 12px; border-radius: var(--r-xs); }
-h2 { margin: 0; font-size: var(--t-lg); font-weight: 600; letter-spacing: -0.005em; }
+h1 { margin: 0; font-family: var(--display); font-size: 40px; line-height: 1.15; font-weight: 500; letter-spacing: -0.01em; text-wrap: balance; }
+h2 { margin: 0; font-family: var(--display); font-size: var(--t-lg); font-weight: 500; }
 .sub { color: var(--muted); font-size: var(--t-sm); margin-top: var(--s1); }
-.label { font-size: var(--t-xs); letter-spacing: .2px; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+.label { font-size: var(--t-sm); letter-spacing: 0; color: var(--muted); font-weight: 500; }
 .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 .meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
 .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: var(--r-xs); font-size: var(--t-xs); font-weight: 500; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
@@ -50,7 +48,7 @@ h2 { margin: 0; font-size: var(--t-lg); font-weight: 600; letter-spacing: -0.005
 .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--s4); }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-xl); padding: var(--s5); min-width: 0; }
 .kpi { display: flex; flex-direction: column; gap: var(--s2); }
-.kpi .big { font-family: var(--display); font-variant-numeric: tabular-nums; font-size: 24px; line-height: 1.2; font-weight: 500; overflow-wrap: anywhere; }
+.kpi .big { font-family: var(--display); font-variant-numeric: tabular-nums; font-size: 28px; line-height: 1.2; font-weight: 500; overflow-wrap: anywhere; }
 .kpi .note { font-size: var(--t-sm); color: var(--muted); }
 section { display: flex; flex-direction: column; gap: var(--s3); min-width: 0; }
 .sec-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s2); }
@@ -67,7 +65,7 @@ section { display: flex; flex-direction: column; gap: var(--s3); min-width: 0; }
 .flowhint { font-size: var(--t-xs); color: var(--faint); }
 /* activity */
 .two { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--s4); }
-@media (max-width: 860px) { h1 { font-size: 32px; } }
+@media (max-width: 860px) { h1 { font-size: 30px; } }
 @media (max-width: 860px) { .two { grid-template-columns: minmax(0, 1fr); } }
 .stack { display: flex; flex-direction: column; gap: var(--s4); min-width: 0; }
 svg text { fill: var(--muted); font-family: var(--mono); font-size: 11px; }
@@ -93,7 +91,7 @@ svg text { fill: var(--muted); font-family: var(--mono); font-size: 11px; }
 pre { margin: 0; font-family: var(--mono); font-size: var(--t-xs); line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 340px; overflow: auto; }
 pre .l-FAIL { color: var(--bad); font-weight: 500; } pre .l-WARN { color: var(--warn); } pre .l-PASS { color: var(--muted); }
 .empty { color: var(--faint); font-size: var(--t-sm); padding: var(--s3) 0; }
-button.theme { font: inherit; font-size: var(--t-xs); text-transform: uppercase; letter-spacing: .2px; font-weight: 500; color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: var(--r-md); padding: 6px 12px; cursor: pointer; }
+button.theme { font: inherit; font-size: var(--t-xs); font-weight: 500; color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: var(--r-md); padding: 6px 12px; cursor: pointer; }
 button.theme:focus-visible, .stream:focus-visible, pre:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 </style>
 </head>
@@ -102,7 +100,7 @@ button.theme:focus-visible, .stream:focus-visible, pre:focus-visible { outline: 
   <header>
     <div>
       <div class="label">claude-global</div>
-      <h1>Setup <mark>workflow</mark></h1>
+      <h1>Setup workflow</h1>
       <div class="sub">수정, PR, 머지, 적용, 검증, 일일 루틴이 지금 어디까지 왔는지 보여줍니다.</div>
     </div>
     <div class="meta">
