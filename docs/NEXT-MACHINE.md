@@ -137,7 +137,7 @@ RTK 0.50.0:
 - 훅은 Bash 도구 호출만 가로챈다. Read, Grep, Glob은 필터되지 않는다.
 - 절감률은 표본에 따라 크게 다르다. 수치는 섹션 9.
 
-Archify (설치됨, 요청 시에만 사용):
+Archify (설치됨, 요청 시에만 사용). 2026-10-09 설치본 315개 파일이 업스트림과 바이트 단위로 일치해 v3.0.1과 같다. `SKILL.md`는 `3.0`만 적으므로 패치 차이를 뒤처짐으로 보고하지 않는다:
 - 다이어그램을 요청할 때만 쓴다. Mac에는 2026-10-09에 사용자 요청으로 설치했다(`npx -y skills add tt-a1i/archify --skill archify --agent claude-code --global --copy --yes`, 설치 위치 `~/.claude/skills/archify`). 설치 전 `SKILL.md`와 `bin/*.mjs`를 읽어 검토했다. 24시간마다 업데이트 확인 GET이 나가며 `ARCHIFY_UPDATE_CHECK_DISABLED=1`로 끌 수 있다. 출력은 `.archify/`(`.gitignore`)에 쌓인다.
 - 명령: `npx skills add tt-a1i/archify -g`. 최신 릴리스 v3.0.1(2026-09-28), MIT. README는 업데이트 명령을 주지 않고 "업데이트는 자동 설치되지 않는다"고만 한다. 같은 설치 명령 재실행이 업데이트일 가능성이 높지만 확인하지 못했다.
 - 지금까지의 흐름도·차트는 앱 내장 시각화로 그렸다.
