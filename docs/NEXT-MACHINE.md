@@ -26,7 +26,7 @@
 | 전역 규칙 `claude/CLAUDE.md`, `RTK.md` | 완료, 첫 컴퓨터에 적용됨 |
 | `claude/settings.json` | 완료, deny 동작 확인됨 |
 | 에이전트 `reviewer`, `explorer` | 완료, `/context`에서 인식 확인 |
-| RTK 0.50.0 | 완료, 훅 동작 확인 |
+| RTK | 첫 컴퓨터 0.50.0에서 훅 동작 확인. 최신 0.51.0(2026-10-09 조회)로 업데이트 필요 |
 | 일일 루틴 `daily-claude-update` | 완료, 수동 실행 1회 성공, 활성(enabled) |
 | 루틴 모델 | 첫 자동 실행은 sonnet-5-5로 확인. UI에서 명시 지정은 사용자가 할 일 |
 | Claude Code CLI | npm 최신 2.1.295 (2026-10-09 확인). 머신마다 `claude --version`으로 확인 |
@@ -56,7 +56,6 @@
    - 스크립트가 `CLAUDE.md`, `RTK.md`, `settings.json`, `agents/`, `routines/`만 `~/.claude`(또는 `CLAUDE_CONFIG_DIR`)로 복사한다. 덮어쓰기 전에 대상 파일을 `~/.claude-backup-<시각>/`에 백업한다. 자격 증명, `projects/`, 플러그인은 건드리지 않는다.
    - `CLAUDE.md` 마지막 줄 `@RTK.md`가 `RTK.md`를 import하므로 두 파일이 같은 폴더에 있어야 한다. 스크립트가 함께 복사한다.
    - 이후 갱신은 `git pull && scripts/apply.sh`.
-   - 복사하지 말 것: `scripts/reset-claude.ps1` (섹션 3의 경고 참고).
    - 확인: Claude 세션에서 `/context`의 Memory files에 `CLAUDE.md`, `RTK.md`가 보이고 Custom agents에 `explorer`, `reviewer`가 보인다.
 4. RTK를 설치한다 (RTK 공식 README 기준).
    ```bash
@@ -64,9 +63,9 @@
    brew install rtk            # macOS
    ```
    - RTK가 없어도 Bash는 동작한다. 훅은 non-blocking이라 실패해도 도구 호출이 진행된다(Claude Code hooks 문서). 필터링만 꺼진다.
-   - `settings.json`에 RTK 훅(`rtk hook claude`)이 이미 들어 있다. `rtk init -g`를 실행하면 설정이 바뀔 수 있으니 실행 전후 `settings.json` 차이를 비교한다. (`PLAN.md`는 `rtk init -g`를 적었지만, 이미 훅이 들어 있는 현재 상태에서는 필수가 아니다.)
+   - `settings.json`에 RTK 훅(`rtk hook claude`)이 이미 들어 있다. `rtk init -g`를 실행하면 설정이 바뀔 수 있으니 실행 전후 `settings.json` 차이를 비교한다. (이미 훅이 들어 있는 현재 상태에서는 `rtk init -g`가 필수가 아니다.)
    - `rtk`가 PATH에 있어야 훅이 동작한다. 첫 컴퓨터에서는 winget 설치 직후 Git Bash PATH에 없었고, 훅은 앱 재시작 뒤 활성화됐다. 이후 같은 컴퓨터의 세션에서 `command -v rtk`가 WinGet 경로를 찾는 것을 확인했다. 새 컴퓨터에서는 새 터미널·앱 재시작 후 `rtk --version`으로 직접 확인한다.
-   - 확인: Bash 명령 몇 개 실행 뒤 `rtk gain`의 Total commands가 늘어난다.
+   - 확인: Bash 명령 몇 개 실행 뒤 `rtk gain`의 Total commands가 늘어난다. 그리고 `scripts/qa-deny.sh`가 전부 PASS여야 한다(RTK가 명령을 다시 써도 deny가 막는지 확인하는 시험, 아래 함정 절).
 5. 예약 루틴을 만든다 (섹션 6, 경로 수정 필요).
 6. 섹션 7의 남은 작업을 순서대로 진행한다.
 
@@ -79,10 +78,10 @@
 - `D:\backup\claude-20261009-projects`: `projects/` 스냅샷 (51개 파일, 대화 기록).
 - `D:\backup\settings.before-rtk-20261009.json`: RTK 훅을 넣기 전의 `settings.json`.
 
-레거시 리셋 (`scripts/reset-claude.ps1`):
-- `PLAN.md`는 "Full: 전부 삭제"라고 적었지만 실제로는 부분 리셋을 했다. 설정 계층만 지웠다.
+레거시 리셋 (첫 컴퓨터에서 한 번, 스크립트는 저장소에서 제거함):
+- 설정 계층만 지웠다. 원래 계획의 "전부 삭제"는 실행하지 않았다.
 - 유지한 것: `.credentials.json`(로그인), `projects/`(대화 기록·메모리), `sessions/`, `session-env/`, `plugins/`, `cache/`, `ide/`, `shell-snapshots/`, `history.jsonl`, `chrome/`(Chrome 연동).
-- 스크립트는 Windows 전용이고 `D:\backup\claude-20261008`과 `$env:USERPROFILE`이 하드코딩되어 있다. 실행하면 `~/.claude.json`을 삭제한다. 새 컴퓨터에서 실행하지 않는다. 백업이 없으면 스크립트 스스로 멈추게 되어 있다.
+- 제거 이유: Windows 전용, 경로 하드코딩, 실행하면 `~/.claude.json`을 삭제한다. 필요하면 git 이력의 `558b4b4`에서 볼 수 있다.
 
 로그인과 설정 파일:
 - 로그인은 새 컴퓨터에서 새로 한다.
@@ -128,7 +127,7 @@ Claude Code CLI:
 
 RTK 0.50.0:
 - 설치: `winget install rtk-ai.rtk`. 첫 컴퓨터 바이너리: `C:\Users\edn_y\AppData\Local\Microsoft\WinGet\Packages\rtk-ai.rtk_Microsoft.Winget.Source_8wekyb3d8bbwe\rtk.exe`
-- 훅은 Bash 도구 호출만 가로챈다. Read, Grep, Glob은 필터되지 않는다 (`PLAN.md` Known limits).
+- 훅은 Bash 도구 호출만 가로챈다. Read, Grep, Glob은 필터되지 않는다.
 - 절감률은 표본에 따라 크게 다르다. 수치는 섹션 9.
 
 Archify (미설치):
@@ -173,9 +172,8 @@ Ponytail (미설치, 의도적 보류):
    (첫 컴퓨터는 `--prefix "C:/Users/edn_y/AppData/Roaming/npm"`이 필요했다.)
 3. Archify: 다이어그램이 필요할 때만 (섹션 5).
 4. Ponytail: 설치하지 않는다 (섹션 5).
-5. 프로젝트 셋업·최적화 (`PLAN.md` phase 7): 별도 계획으로. 컨텍스트에서 큰 비중은 시스템 도구와 MCP 도구이며 Chrome 연동·Browser 도구가 많다. 쓰지 않는 커넥터를 끄는 것이 후보다.
+5. 프로젝트 셋업·최적화: 별도 계획으로. 컨텍스트에서 큰 비중은 시스템 도구와 MCP 도구이며 Chrome 연동·Browser 도구가 많다. 쓰지 않는 커넥터를 끄는 것이 후보다.
 6. `reports/` 버전 관리: 현재 로컬 전용으로 결정함 (섹션 10).
-7. `scripts/reset-claude.ps1`을 다른 OS·컴퓨터에서 쓸 일이 생기면 경로를 일반화한다 (지금은 하드코딩).
 
 ## 8. 링크 모음
 
@@ -240,18 +238,18 @@ RTK 절감 (시점별로 값이 다르다):
 - Ponytail은 설치하지 않는다. Archify는 요청 시에만, 검토 후 승인받고 설치한다.
 - 루틴 모델은 첫 실행만 Haiku, 이후 Sonnet.
 - `/context`, `/usage` 같은 슬래시 명령은 사용자가 직접 실행해야 한다 (대화형 UI 명령).
+- 변경은 브랜치와 PR로 올리고 머지는 사람이 한다. 자동 머지는 요청할 때만. push는 사용자 승인 후이고 force push는 쓰지 않는다. (삭제한 원래 계획 문서의 결정을 옮겨 적음)
 
 ## 11. 함정과 주의사항
 
 - x.com은 자동 fetch에 HTTP 402를 돌려준다. 앱 내장 브라우저로는 열린다. 공식 정보의 기준은 섹션 8의 공식 링크다.
 - PowerShell 도구가 막힌 세션이 있었다. Bash와 Windows 경로를 쓴다. JSON 확인은 Node와 `cygpath -w`를 쓴다. Windows용 Python은 `/c/...` 형태의 경로를 읽지 못한다.
-- 프로세스 확인 시 `--chrome-native-host`는 제외한다 (Chrome이 띄우며, 리셋 스크립트도 `chrome/`을 지우지 않는다).
+- 프로세스 확인 시 `--chrome-native-host`는 제외한다 (Chrome이 띄운다).
 - push는 자동 모드 분류기가 거부할 수 있다. 사용자가 채팅에서 명시적으로 승인해야 한다. `git push origin main`만 쓰고 force는 쓰지 않는다.
 - `.credentials*`, `.env*`는 읽지도 커밋하지도 않는다.
-- `PLAN.md`는 원래 계획이다. 실제와 다른 곳(전체 삭제 리셋)은 `PLAN.md` 상단의 정정 메모와 이 문서를 따른다.
 - 예약 작업 `SKILL.md`(첫 컴퓨터 라이브와 저장소 참조본 모두 원본에서 `routines/` 경로 표기가 틀려 있었다). 저장소 참조본은 `claude/routines/daily-update.md`로 고쳤다. 라이브 쪽은 아직 원본 그대로이며 동작에는 영향이 없다 (본문이 곧바로 올바른 경로로 보정한다).
 
-- RTK 훅과 deny 규칙: 공식 문서상 권한 규칙은 훅이 돌려준 입력을 기준으로 평가되고, RTK는 Bash 명령을 `git status` -> `rtk git status`로 다시 쓴다. 2026-10-09 시뮬레이션 QA(RTK 대신 같은 방식으로 `rtk ` 접두어를 붙이는 모의 훅과 스텁 `rtk`)에서 원래 deny 패턴은 `rtk git push --force origin main`, `rtk git reset --hard HEAD`, `rtk rm -fr ~/x`를 막지 못했고 명령이 실제 실행됐다(훅이 `allow`를 돌려주든 안 주든 동일). Bash deny 패턴 25개를 `rtk ` 접두어로 복제해 53개로 늘린 뒤 같은 시험에서 전부 차단됐고, 대조군 `git status`는 정상 실행됐다. 실제 RTK 바이너리로는 아직 시험하지 못했다(컨테이너에서 `rtk-ai/rtk` 접근 불가). RTK가 설치된 머신에서 스크래치 저장소로 `git push --force`, `git reset --hard HEAD`가 차단되는지 한 번 확인한다.
+- RTK 훅과 deny 규칙: 공식 문서상 권한 규칙은 훅이 돌려준 입력을 기준으로 평가되고, RTK는 Bash 명령을 `git status` -> `rtk git status`로 다시 쓴다. 2026-10-09 시뮬레이션 QA(RTK 대신 같은 방식으로 `rtk ` 접두어를 붙이는 모의 훅과 스텁 `rtk`)에서 원래 deny 패턴은 `rtk git push --force origin main`, `rtk git reset --hard HEAD`, `rtk rm -fr ~/x`를 막지 못했고 명령이 실제 실행됐다(훅이 `allow`를 돌려주든 안 주든 동일). Bash deny 패턴 25개를 `rtk ` 접두어로 복제해 53개로 늘린 뒤 같은 시험에서 전부 차단됐고, 대조군 `git status`는 정상 실행됐다. 실제 RTK 바이너리로는 아직 시험하지 못했다(컨테이너에서 `rtk-ai/rtk` 접근 불가). RTK가 설치된 머신에서 `scripts/qa-deny.sh`를 한 번 실행해 전부 PASS인지 확인한다(스크래치 저장소만 쓴다). 이 스크립트는 모의 훅으로 검증했다: 현재 설정은 PASS, 복제 패턴이 없던 이전 설정(`0d28f82`)은 5건 FAIL.
 - deny/ask 규칙은 보안 경계가 아니다(공식 permissions 문서). `/bin/rm -rf`, `bash -c '...'`, `git -C . push`처럼 다른 형태의 호출은 못 막는다. 명령 텍스트와 무관한 강제는 샌드박스(`/sandbox`)로 한다. 샌드박스는 기본 꺼짐이고 macOS, Linux, WSL2에서만 동작하며 네이티브 Windows에서는 명령이 샌드박스 없이 실행된다.
 - 공식 비용 문서 권장 중 미적용: 상태줄로 컨텍스트 사용량 상시 표시(스크립트 필요, 보류), 미사용 MCP 서버 비활성화(`/mcp`, 사용자 조치), 프롬프트 제안 끄기(배경 토큰 소량, 선택).
 
