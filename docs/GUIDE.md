@@ -77,6 +77,10 @@ Habits: `/clear` between unrelated tasks; after two failed corrections on one is
 - After any change to permissions or hooks: `bash scripts/verify.sh --full` on every machine where RTK is installed.
 - Edit `claude/` in this repo, never `~/.claude` directly.
 
+## Live dashboard
+
+`python3 scripts/dashboard/server.py` serves http://127.0.0.1:8787 (local only, read-only, standard library). It refreshes every 3 seconds and shows the workflow state (edit, PR, merge, apply, verify, routine, report), tool calls per minute and a tool log from the newest session log in `~/.claude/projects` (tool names, times and file basenames only, never message text), commit and PR history, the `verify.sh --live` output and the latest routine report. `verify.sh --live` runs at most once a minute. Not measured: other operating systems (on Windows the server picks Git Bash for `verify.sh`) and logs of sessions that run on another machine.
+
 ## Permission mode: bypassPermissions by default
 
 The default mode is `bypassPermissions` (decision 2026-10-10). Per the permission-modes doc, deny rules apply in every mode including bypass, explicit ask rules and `rm`/`rmdir` on critical paths still prompt, and allow rules have no effect. So `permissions.deny` and `permissions.ask` in `claude/settings.json` are the guard. `verify.sh` fails when `defaultMode` is not `bypassPermissions`, when a bypass lock is present, or when `deny` or `ask` is missing or empty.
