@@ -1,6 +1,6 @@
 # Daily update routine
 
-Purpose: track Claude Code, RTK and Anthropic releases, check that the installed tools are actually in use, report what matters, and propose setup changes. This routine only reads and reports. It never changes `~/.claude` and never installs anything on its own. An update is reported with its exact command and applied by the user.
+Purpose: track Claude Code, RTK and Anthropic releases and changes to the official docs this setup depends on, check that the applied setup matches this repository and the installed tools are actually in use, report what matters, and propose setup changes. This routine only reads and reports. It never changes `~/.claude` and never installs anything on its own. An update is reported with its exact command and applied by the user.
 
 Model: Sonnet (target). Run once per day.
 
@@ -9,7 +9,7 @@ Note: the scheduled task has no model field, so it runs on the app default. The 
 ## Steps
 
 1. Read the installed version: `claude --version`.
-2. Read the official changelog with WebFetch: `https://code.claude.com/docs/en/changelog`. Extract entries newer than the version in `state/last-seen.json`. If the file is missing, use the 10 most recent entries.
+2. Read the official changelog with WebFetch: `https://code.claude.com/docs/en/changelog`. Extract entries newer than `latest_changelog_version` in `state/last-seen.json`. If the file is missing, use the 10 most recent entries.
 3. Read `https://www.anthropic.com/news` and list posts from the last 24 hours that concern Claude Code, models, skills, hooks, or subagents.
 4. Optional signal only: search X for Claude Code and Claude Dev posts. x.com returns HTTP 402 to automated fetches, so use search snippets and do not rely on them. Official sources decide.
 5. For each new item, classify it as: relevant to our setup, informational, or ignore. For relevant items, state the affected file in `claude/` and the proposed change.
@@ -18,14 +18,12 @@ Note: the scheduled task has no model field, so it runs on the app default. The 
    - Archify: latest = the release tag at `https://github.com/tt-a1i/archify/releases/latest`. Installed = `~/.claude/skills/archify/` exists (version only if its SKILL.md states one, else unknown). The README does not say where its installer writes files, so a missing folder means "not found", not proof of absence. The README gives no update command and says updates are never automatic; report re-running `npx skills add tt-a1i/archify -g` as unverified.
    - Ponytail: latest = `version` in `https://raw.githubusercontent.com/DietrichGebert/ponytail/main/.claude-plugin/plugin.json` (the repo publishes no release tags). Installed = an entry named `ponytail` in `~/.claude/plugins/installed_plugins.json`, enabled = `"ponytail@ponytail": true` under `enabledPlugins` in `settings.json`. Update path from install guides, unverified in the README: `/plugin marketplace update ponytail`, then `/reload-plugins`.
    - Never install or update either one. Ponytail is always on by decision (2026-10-09): it is expected to be installed and enabled, so "not installed" or "disabled" is reported as unhealthy. Archify is installed only when the user asks for a diagram, after reading its SKILL.md; "not installed, latest x.y.z" is normal for it. Report the changelog entries since the last run that matter to us.
-7. Tool health, read-only:
-   - Config drift: `diff -r` of `claude/{CLAUDE.md,RTK.md,settings.json,agents,routines,skills/orchestrate}` against the Claude config directory (`CLAUDE_CONFIG_DIR` or `~/.claude`). Any difference is reported, not fixed.
-   - RTK on PATH: `command -v rtk`. Missing means the hook is a no-op and Bash output is not filtered.
-   - Ponytail: installed and enabled (see step 6). Its hooks write a `.ponytail-active` flag in the config directory; that is the plugin's own write, not an edit by this routine.
+7. Setup and tool health, read-only. Run `bash scripts/verify.sh --live` and copy its FAIL and WARN lines into the report; it checks the repo (JSON, shell syntax, rtk twins, bypass-mode lock, `CLAUDE.md` length, agent and skill frontmatter), that every file `apply.sh` copies equals the applied copy in the Claude config directory (`CLAUDE_CONFIG_DIR` or `~/.claude`), that `jq`, `rtk`, `node` and `gh` are on PATH, and that the Ponytail plugin is installed and enabled. A difference is reported, not fixed. Its Ponytail flag file in the config directory is the plugin's own write, not an edit by this routine.
    - RTK in use: `rtk gain` total commands against `rtk_total_commands` in `state/last-seen.json`. An unchanged count since the last run is a signal, not proof, because no Bash may have run. Say which it is when unknown.
-8. Write `reports/YYYY-MM-DD.md` in this repository with: tool versions, new items, tool health, proposed changes, and what was not verified.
-9. Update `state/last-seen.json` with the latest changelog version, `installed_rtk`, `latest_rtk_version`, `rtk_total_commands`, `latest_archify_version` and `latest_ponytail_version`. Write a value only if it was read this run.
-10. Do not edit the Claude config directory (the Ponytail flag file above is exempt), do not install anything, and do not push. A proposed change is applied only after the user approves it in chat.
+8. Official docs watch. Run `bash scripts/docs-watch.sh --update`. It fetches the pages this setup depends on (best-practices, memory, skills, sub-agents, permissions, plugins, settings, hooks-guide) and prints NEW (first run on this machine: baseline, no analysis), SAME, or CHANGED with a short line diff. For each CHANGED page read the diff, and fetch the page only when the diff is not enough. Classify each change as relevant (affects `claude/settings.json`, `claude/CLAUDE.md`, an agent, a skill, a script or this routine), informational, or ignore. For a relevant change state the affected file and the proposed change with the page URL.
+9. Write `reports/YYYY-MM-DD.md` in this repository (a second run on the same day overwrites it; the latest run wins) with: tool versions, new items, setup health, docs watch, proposed changes, and what was not verified.
+10. Update `state/last-seen.json` with these exact keys, writing a key only if its value was read this run: `checked_on`, `installed_cli`, `latest_changelog_version`, `latest_changelog_date`, `latest_cli_npm`, `installed_rtk`, `latest_rtk_version`, `rtk_total_commands`, `latest_archify_version`, `latest_ponytail_version`.
+11. Do not edit the Claude config directory, do not install anything, do not commit or push. This routine writes only `reports/` (including the docs cache) and `state/last-seen.json`. A proposed change is applied only after the user approves it in chat.
 
 ## Output format
 
@@ -35,10 +33,10 @@ Claude Code: installed x.y.z | latest x.y.z | update command (if outdated)
 RTK: installed x.y.z | latest x.y.z | update command (if outdated)
 Archify: not installed or x.y.z | latest x.y.z | changes since last run
 Ponytail: installed x.y.z, enabled yes/no (or NOT INSTALLED, unhealthy) | latest x.y.z | changes since last run
-Tool health:
-- config drift | none or list of files
-- rtk on PATH | yes/no
+Setup health: verify.sh --live | N FAIL, N WARN | the FAIL and WARN lines
 - rtk in use | commands today vs last run | signal or unknown
+Docs watch:
+- page | NEW, SAME or CHANGED | relevance to us
 Relevant:
 - item | affected file | proposed change | source URL
 Informational:

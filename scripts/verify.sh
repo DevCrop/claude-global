@@ -1,0 +1,186 @@
+#!/usr/bin/env bash
+# Read-only verification. Repo checks always; machine checks with --live.
+# Usage: bash scripts/verify.sh [--live] [--full]
+#   --live  compare the applied files in the Claude config directory with claude/, check tools and the Ponytail plugin
+#   --full  also run scripts/qa-deny.sh (needs the claude CLI and uses the haiku model)
+# Exit code 1 when any FAIL is printed. WARN is informational. Works on macOS bash and Git Bash on Windows.
+set -u
+
+repo="$(cd "$(dirname "$0")/.." && pwd)"
+src="$repo/claude"
+dest="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+live=0
+full=0
+for a in "$@"; do
+  case "$a" in
+    --live) live=1 ;;
+    --full) full=1 ;;
+    *) echo "usage: bash scripts/verify.sh [--live] [--full]" >&2; exit 2 ;;
+  esac
+done
+
+fails=0
+warns=0
+pass() { printf 'PASS  %s\n' "$*"; }
+fail() { printf 'FAIL  %s\n' "$*"; fails=$((fails + 1)); }
+warn() { printf 'WARN  %s\n' "$*"; warns=$((warns + 1)); }
+skip() { printf 'SKIP  %s\n' "$*"; }
+
+# Frontmatter lines (between the first two --- lines) of a markdown file.
+# CR is stripped first: Git for Windows may check files out with CRLF line endings.
+frontmatter() { tr -d '\r' < "$1" | awk 'NR==1 && $0!="---" {exit} /^---$/ {c++; next} c==1 {print} c>=2 {exit}'; }
+# Top-level keys of that frontmatter.
+fm_keys() { frontmatter "$1" | sed -n 's/^\([A-Za-z][A-Za-z_-]*\):.*/\1/p'; }
+in_list() { case " $2 " in *" $1 "*) return 0 ;; esac; return 1; }
+
+echo "== repo ($repo)"
+
+# Field names from the Claude Code docs (sub-agents and skills pages). Unknown fields are ignored by
+# Claude Code without an error, so a typo would silently do nothing: report them.
+agent_keys="name description tools disallowedTools model permissionMode maxTurns skills mcpServers hooks memory background omitClaudeMd effort isolation color initialPrompt experimental"
+skill_keys="name description when_to_use argument-hint arguments disable-model-invocation user-invocable allowed-tools disallowed-tools model effort context agent background hooks paths shell metadata license compatibility"
+
+# 1. settings.json is valid JSON
+if command -v jq >/dev/null 2>&1; then
+  if jq empty "$src/settings.json" 2>/dev/null; then pass "settings.json is valid JSON"; else fail "settings.json is not valid JSON"; fi
+elif command -v python3 >/dev/null 2>&1; then
+  if python3 -c "import json,sys;json.load(open(sys.argv[1]))" "$src/settings.json" 2>/dev/null; then pass "settings.json is valid JSON"; else fail "settings.json is not valid JSON"; fi
+else
+  skip "settings.json JSON check (needs jq or python3)"
+fi
+
+# 2. shell syntax
+syntax_ok=1
+for f in "$repo"/scripts/*.sh; do bash -n "$f" 2>/dev/null || { fail "bash -n failed: ${f#$repo/}"; syntax_ok=0; }; done
+[ "$syntax_ok" -eq 1 ] && pass "bash -n scripts/*.sh"
+
+# 3. every Bash deny/ask pattern has its rtk twin
+if out="$(bash "$repo/scripts/qa-deny.sh" --static 2>&1)"; then pass "$(printf '%s' "$out" | sed 's/^PASS  //')"; else fail "rtk twin check: $out"; fi
+
+# 4. settings that must stay on
+grep -q '"disableBypassPermissionsMode"[[:space:]]*:[[:space:]]*"disable"' "$src/settings.json" \
+  && pass "bypassPermissions mode is disabled in settings.json" \
+  || fail "permissions.disableBypassPermissionsMode is not \"disable\" (bypass mode ignores the deny rules)"
+grep -q '"ask"' "$src/settings.json" && pass "permissions.ask is present" || fail "permissions.ask is missing"
+
+# 5. global CLAUDE.md size (docs: target under 200 lines)
+lines="$(wc -l < "$src/CLAUDE.md" | tr -d ' ')"
+[ "$lines" -le 200 ] && pass "claude/CLAUDE.md has $lines lines (limit 200)" || fail "claude/CLAUDE.md has $lines lines (limit 200)"
+
+# 6. agents
+for f in "$src"/agents/*.md; do
+  [ -f "$f" ] || continue
+  n="${f#$src/}"
+  keys="$(fm_keys "$f")"
+  [ -n "$keys" ] || { fail "$n: no frontmatter"; continue; }
+  dup="$(printf '%s\n' "$keys" | sort | uniq -d | tr '\n' ' ')"
+  [ -z "$dup" ] || fail "$n: duplicate frontmatter key(s): $dup"
+  printf '%s\n' "$keys" | grep -qx name || fail "$n: missing name"
+  printf '%s\n' "$keys" | grep -qx description || fail "$n: missing description"
+  bad=""
+  for k in $(printf '%s\n' "$keys" | sort -u); do in_list "$k" "$agent_keys" || bad="$bad $k"; done
+  [ -z "$bad" ] || warn "$n: unknown frontmatter key(s):$bad (ignored by Claude Code)"
+  [ -z "$dup" ] && [ -z "$bad" ] && pass "$n frontmatter"
+done
+
+# 7. skills
+for d in "$src"/skills/*/; do
+  [ -d "$d" ] || continue
+  dn="$(basename "$d")"
+  f="$d/SKILL.md"
+  n="skills/$dn/SKILL.md"
+  [ -f "$f" ] || { fail "$n: missing"; continue; }
+  keys="$(fm_keys "$f")"
+  dup="$(printf '%s\n' "$keys" | sort | uniq -d | tr '\n' ' ')"
+  [ -z "$dup" ] || fail "$n: duplicate frontmatter key(s): $dup"
+  name="$(frontmatter "$f" | sed -n 's/^name:[[:space:]]*//p')"
+  [ "$name" = "$dn" ] || fail "$n: name '$name' differs from directory '$dn'"
+  desc="$(frontmatter "$f" | sed -n 's/^description:[[:space:]]*//p')"
+  if [ -z "$desc" ]; then
+    fail "$n: description missing or not on one line"
+  else
+    len="$(printf '%s' "$desc" | wc -c | tr -d ' ')"
+    [ "$len" -le 1536 ] || fail "$n: description is $len characters (listing cap 1536)"
+  fi
+  bad=""
+  for k in $(printf '%s\n' "$keys" | sort -u); do in_list "$k" "$skill_keys" || bad="$bad $k"; done
+  [ -z "$bad" ] || warn "$n: unknown frontmatter key(s):$bad (ignored by Claude Code)"
+  [ -z "$dup" ] && [ -z "$bad" ] && [ "$name" = "$dn" ] && [ -n "$desc" ] && pass "$n frontmatter"
+done
+
+# 8. everything apply.sh copies exists
+items="$(sed -n 's/^items="\(.*\)"$/\1/p' "$repo/scripts/apply.sh")"
+[ -n "$items" ] || fail "could not read the items list from scripts/apply.sh"
+missing=""
+for item in $items; do [ -e "$src/$item" ] || missing="$missing $item"; done
+[ -z "$missing" ] && pass "apply.sh items exist in claude/" || fail "apply.sh copies items that are not in claude/:$missing"
+
+if [ "$live" -eq 1 ]; then
+  echo "== machine ($dest)"
+  if [ ! -d "$dest" ]; then
+    # Stop here: running the claude CLI against a missing CLAUDE_CONFIG_DIR would create it.
+    fail "config directory not found: $dest (run: bash scripts/apply.sh)"
+    echo "== $fails FAIL, $warns WARN"
+    exit 1
+  fi
+
+  # 9. applied files equal the repo (extra files in the config directory are ignored)
+  for item in $items; do
+    if [ ! -e "$dest/$item" ]; then fail "not applied: $item (run: bash scripts/apply.sh)"; continue; fi
+    drift=""
+    if [ -d "$src/$item" ]; then
+      while IFS= read -r f; do
+        rel="${f#$src/}"
+        cmp -s "$f" "$dest/$rel" || drift="$drift $rel"
+      done <<EOF
+$(find "$src/$item" -type f)
+EOF
+    else
+      if ! cmp -s "$src/$item" "$dest/$item"; then
+        # settings.json: key order alone is not drift
+        if [ "$item" = "settings.json" ] && command -v jq >/dev/null 2>&1 \
+           && [ "$(jq -S . "$src/$item" 2>/dev/null)" = "$(jq -S . "$dest/$item" 2>/dev/null)" ]; then
+          :
+        else
+          drift=" $item"
+        fi
+      fi
+    fi
+    [ -z "$drift" ] && pass "in sync: $item" || fail "differs from claude/:$drift (apply.sh would overwrite; if the live copy has a change you want, move it into claude/ first)"
+  done
+
+  # 10. tools
+  command -v jq >/dev/null 2>&1 && pass "jq on PATH" || fail "jq not on PATH (the status line needs it)"
+  command -v rtk >/dev/null 2>&1 && pass "rtk on PATH ($(rtk --version 2>/dev/null | head -n 1))" || warn "rtk not on PATH: the hook is a no-op and Bash output is not filtered"
+  command -v node >/dev/null 2>&1 && pass "node on PATH" || warn "node not on PATH (Ponytail hooks run on Node.js)"
+  command -v gh >/dev/null 2>&1 && pass "gh on PATH" || warn "gh not on PATH"
+
+  # 11. Ponytail plugin
+  if command -v claude >/dev/null 2>&1; then
+    pl="$(claude plugin list 2>&1)"
+    # The ponytail entry only: from its line up to the next plugin id, so a neighbour's status is not read.
+    block="$(printf '%s\n' "$pl" | awk '/ponytail@ponytail/ {f=1; print; next} f && /[A-Za-z0-9_.-]+@[A-Za-z0-9_.-]+/ {exit} f {print}' | head -n 8)"
+    if [ -z "$block" ]; then
+      fail "plugin ponytail@ponytail is not installed (claude plugin marketplace add DietrichGebert/ponytail; claude plugin install ponytail@ponytail)"
+    elif printf '%s' "$block" | grep -qi 'disabled'; then
+      fail "plugin ponytail@ponytail is installed but disabled"
+      printf '%s\n' "$block" | sed 's/^/        /'
+    elif printf '%s' "$block" | grep -qi 'enabled'; then
+      pass "plugin ponytail@ponytail is installed and enabled"
+    else
+      warn "plugin ponytail@ponytail is listed but its status is unclear:"
+      printf '%s\n' "$block" | sed 's/^/        /'
+    fi
+  else
+    skip "plugin check (claude CLI not on PATH)"
+  fi
+  if [ -f "$dest/.ponytail-active" ]; then pass "Ponytail flag file: $(head -n 1 "$dest/.ponytail-active")"; else warn "no .ponytail-active flag yet (written by the plugin's hooks in a new session)"; fi
+fi
+
+if [ "$full" -eq 1 ]; then
+  echo "== deny and ask rules (qa-deny.sh)"
+  if bash "$repo/scripts/qa-deny.sh"; then pass "qa-deny.sh"; else fail "qa-deny.sh"; fi
+fi
+
+echo "== $fails FAIL, $warns WARN"
+[ "$fails" -eq 0 ]

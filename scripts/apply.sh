@@ -12,7 +12,7 @@ backup="$dest-backup-$stamp"
 
 # Files and directories copied. scheduled-tasks/ is excluded: it is created in the app.
 # Skills are listed one by one: other skills (for example archify) live in the same directory.
-items="CLAUDE.md RTK.md settings.json agents routines skills/orchestrate"
+items="CLAUDE.md RTK.md settings.json agents routines skills/orchestrate skills/project-setup"
 
 mkdir -p "$dest"
 

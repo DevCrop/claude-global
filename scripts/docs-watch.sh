@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Prints which official Claude Code docs pages changed since the last --update run,
+# with a short line diff of each. Read-only except for the local cache in reports/
+# (gitignored), and only when --update is passed. Needs curl. Works on macOS bash and
+# Git Bash on Windows.
+set -eu
+
+repo="$(cd "$(dirname "$0")/.." && pwd)"
+cache="$repo/reports/docs-cache"
+# Pages this setup depends on: CLAUDE.md and rules, skills, subagents, permissions, plugins, settings, hooks, best practices.
+pages="best-practices memory skills sub-agents permissions plugins settings hooks-guide"
+update=0
+[ "${1:-}" = "--update" ] && update=1
+
+command -v curl >/dev/null 2>&1 || { echo "curl not found" >&2; exit 2; }
+mkdir -p "$cache"
+tmp="$(mktemp "${TMPDIR:-/tmp}/docs-watch.XXXXXX")"
+trap 'rm -f "$tmp"' EXIT
+
+for p in $pages; do
+  url="https://code.claude.com/docs/en/$p.md"
+  if ! curl -fsSL -m 30 "$url" -o "$tmp" 2>/dev/null || [ ! -s "$tmp" ]; then
+    echo "FETCH-FAIL $p ($url)"
+    continue
+  fi
+  old="$cache/$p.md"
+  if [ ! -f "$old" ]; then
+    echo "NEW      $p ($(wc -c < "$tmp" | tr -d ' ') bytes, baseline, no diff)"
+  elif cmp -s "$old" "$tmp"; then
+    echo "SAME     $p"
+  else
+    echo "CHANGED  $p ($url)"
+    d="$(diff "$old" "$tmp" | grep '^[<>]' || true)"
+    n="$(printf '%s\n' "$d" | wc -l | tr -d ' ')"
+    printf '%s\n' "$d" | head -60 | sed 's/^/    /' | cut -c1-240
+    [ "$n" -gt 60 ] && echo "    (diff truncated to 60 of $n lines)"
+  fi
+  [ "$update" -eq 1 ] && cp "$tmp" "$old"
+done
+exit 0
