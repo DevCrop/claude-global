@@ -23,6 +23,11 @@ for p in $pages; do
     echo "FETCH-FAIL $p ($url)"
     continue
   fi
+  # An error page served with status 200 is HTML; the docs are markdown. Do not diff or cache it.
+  if grep -m1 -v '^[[:space:]]*$' "$tmp" | grep -qi '^[[:space:]]*<'; then
+    echo "FETCH-FAIL $p ($url returned HTML, not markdown)"
+    continue
+  fi
   old="$cache/$p.md"
   if [ ! -f "$old" ]; then
     echo "NEW      $p ($(wc -c < "$tmp" | tr -d ' ') bytes, baseline, no diff)"
