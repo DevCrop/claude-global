@@ -12,6 +12,7 @@ Source of truth for the global Claude Code setup on this machine (`~/.claude`).
 - `state/last-seen.json` — baseline for the daily routine
 - `scripts/apply.sh` — copies `claude/` into `~/.claude/` with a backup
 - `scripts/qa-deny.sh` — checks that the deny rules still block dangerous commands on this machine, with hooks such as rtk active
+- `scripts/dashboard.py` — renders `claude/` and `state/` into `reports/dashboard.html` (read-only, stdlib only): subagents, hooks, deny-rule rtk parity, CLI version drift. Run `python3 scripts/dashboard.py`.
 
 Runtime data (credentials, session history, auto-memory, plugins, caches) is never stored here. See `.gitignore`.
 
