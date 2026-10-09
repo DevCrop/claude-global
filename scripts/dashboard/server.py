@@ -2,7 +2,7 @@
 """Local live dashboard for the global Claude setup. Read-only, stdlib only, 127.0.0.1 only.
 
 Run: python3 scripts/dashboard/server.py [--port 8787]
-Optional: PROJECT_DIRS or state/projects.txt lists project roots; the "프로젝트 셋업" dialog shows only file presence and line counts.
+Optional: PROJECT_DIRS or state/projects.txt lists project roots; the "프로젝트 셋업" dialog shows file presence, line counts, setting keys and script names.
 Reads: git history, gh PR list, scripts/verify.sh --live, reports/*.md, claude/settings.json,
 and the tool-call names and timestamps of the newest session log in ~/.claude/projects.
 It parses the log tail in memory but emits only tool names, times, a file basename, and a command's first word plus a plain subcommand
@@ -190,22 +190,30 @@ def project_setup(d):
             return p.read_text(encoding="utf-8", errors="replace").splitlines()
         except Exception:
             return []
-    agents, claude = d / "AGENTS.md", d / "CLAUDE.md"
+    agents = d / "AGENTS.md"
+    claude = d / "CLAUDE.md" if (d / "CLAUDE.md").is_file() else d / ".claude" / "CLAUDE.md"  # both are project files (memory doc)
     cl = lines(claude)
-    first = next((l.strip() for l in cl if l.strip()), "")
+    fence, imports = False, False
+    for l in cl:  # an @import counts anywhere outside a code fence
+        if l.lstrip().startswith("```"):
+            fence = not fence
+        elif not fence and re.match(r"\s*@(\./)?AGENTS\.md\b", l):
+            imports = True
     try:
         cfg = json.loads((d / ".claude" / "settings.json").read_text(encoding="utf-8"))
     except Exception:
         cfg = None
-    perm = (cfg or {}).get("permissions", {})
+    perm = cfg.get("permissions") if isinstance(cfg, dict) else None
+    perm = perm if isinstance(perm, dict) else {}
+    deny = [r for r in perm.get("deny", []) if isinstance(r, str)] if isinstance(perm.get("deny"), list) else []
     gi = "\n".join(lines(d / ".gitignore"))
-    rules = list((d / ".claude" / "rules").glob("*.md")) if (d / ".claude" / "rules").is_dir() else []
+    rules = list((d / ".claude" / "rules").rglob("*.md")) if (d / ".claude" / "rules").is_dir() else []
     al = lines(agents)
     f = {"name": d.name, "found": d.is_dir(),
          "agents": agents.is_file(), "agentsLines": len(al),
-         "claude": claude.is_file(), "claudeLines": len(cl), "imports": first.startswith("@AGENTS.md"),
-         "settings": cfg is not None, "denyEnv": any(".env" in str(r) for r in perm.get("deny", [])),
-         "defaultMode": "defaultMode" in perm, "rules": len(rules),
+         "claude": claude.is_file(), "claudeLines": len(cl), "imports": imports,
+         "settings": cfg is not None, "denyEnv": any(re.search(r"Read\(.*\.env", r) for r in deny),
+         "defaultMode": perm.get("defaultMode") == "bypassPermissions", "rules": len(rules),
          "gitignore": "CLAUDE.local.md" in gi and "settings.local.json" in gi}
     if d.is_dir():
         f["checks"] = practice_checks(d, f, al, cl, perm, rules, "\n".join(al + cl).lower())
@@ -252,20 +260,15 @@ def practice_checks(d, f, al, cl, perm, rules, text):
         if not f["denyEnv"]:
             add("add", "bad", "deny에 .env 읽기 차단이 없음", "deny는 모든 모드에서 적용되는 보호 규칙입니다.", "permissions.deny에 Read(**/.env*)를 추가합니다.", "permissions")
         if f["defaultMode"]:
-            add("remove", "bad", "프로젝트 settings에 defaultMode", "권한 모드는 사용자·팀이 정할 일입니다. 프로젝트 파일에 두면 모두에게 강제됩니다.", "defaultMode 줄을 지웁니다.", "permissions")
-        risky = [a for a in perm.get("allow", []) if re.search(r"(build|install|deploy|sass|rm |push)", str(a))]
+            add("remove", "bad", "프로젝트 settings에 bypassPermissions", "권한 확인을 끄는 모드를 프로젝트 파일로 팀 전체에 강제하는 것은 위험합니다. 이 모드는 사용자가 정할 일입니다.", "defaultMode 줄을 지웁니다.", "permissions")
+        allow = perm.get("allow") if isinstance(perm.get("allow"), list) else []
+        risky = [a for a in allow if isinstance(a, str) and re.match(r"Bash\((rm|sudo|git push|npm publish|npm install|npm ci|composer install)[ :)]", a)]
         if risky:
-            add("remove", "warn", "allow에 파일을 쓰거나 배포하는 명령 %d개" % len(risky), "허용 목록에는 읽기 전용 검사(test, lint, typecheck)만 두는 것이 안전합니다.", "build/install/deploy/push류 allow를 지웁니다.", "permissions")
+            add("fix", "info", "allow에 삭제·설치·배포 명령 %d개" % len(risky), "문서의 allow 예시는 npm run test, git commit 같은 일상 명령입니다. 삭제·설치·push는 매번 확인하는 편이 안전합니다(판단 사항).", "팀이 정말 필요한 것만 남기고 나머지 allow를 지웁니다.", "permissions")
     if not f["gitignore"]:
-        add("add", "warn", ".gitignore에 로컬 파일 줄 누락", "CLAUDE.local.md와 settings.local.json은 개인용입니다. 커밋되면 개인 설정이 팀에 퍼집니다.", ".gitignore에 CLAUDE.local.md, .claude/settings.local.json을 추가합니다.", "memory")
-    badrules = []
-    for r in rules:
-        parts = r.read_text(encoding="utf-8", errors="replace").split("---")
-        if len(parts) > 2 and re.search(r"^(?!paths:)[A-Za-z_-]+:", parts[1], re.M):
-            badrules.append(r.name)
-    if badrules:
-        add("fix", "warn", "rules frontmatter에 paths 외 필드 (%d개 파일)" % len(badrules), "paths가 규칙 파일에서 Claude Code가 읽는 유일한 필드입니다.", "paths: 목록만 남깁니다.", "memory")
-    env = [t for t in git_tracked(d, ".env", ".env.*", "**/.env") if not re.search(r"\.(example|sample|template|dist)$", t)]
+        has = (d / "CLAUDE.local.md").is_file() or (d / ".claude" / "settings.local.json").is_file()
+        add("add", "warn" if has else "info", ".gitignore에 로컬 파일 줄 누락", "CLAUDE.local.md와 settings.local.json은 개인용입니다. 커밋되면 개인 설정이 팀에 퍼집니다.", ".gitignore에 CLAUDE.local.md, .claude/settings.local.json을 추가합니다.", "memory")
+    env = [t for t in git_tracked(d, ".env", ".env.*", "**/.env", "**/.env.*") if not re.search(r"\.(example|sample|template|dist)$", t)]
     if env:
         add("remove", "bad", "git에 .env 파일 %d개 추적 중" % len(env), "커밋된 비밀은 히스토리에 남습니다.", "git rm --cached 후 .gitignore에 추가하고, 노출된 값은 폐기합니다.", "permissions")
     if git_tracked(d, "CLAUDE.local.md", ".claude/settings.local.json"):
@@ -281,18 +284,25 @@ def practice_checks(d, f, al, cl, perm, rules, text):
             names += re.findall(r"^([A-Za-z0-9_.-]+):", (d / mk).read_text(encoding="utf-8", errors="replace"), re.M)
     checks = [c for c in names if re.search(r"(test|lint|typecheck|check|phpunit|stylelint|phpcs)", c, re.I)]
     ci = (d / ".github" / "workflows").is_dir()
-    f["verify"] = len(checks) + (1 if ci else 0)
-    if not checks and not ci:
+    tool = any((d / n).is_file() for n in ("pyproject.toml", "pytest.ini", "tox.ini", "go.mod", "Cargo.toml"))  # built-in test runners
+    f["verify"] = len(checks) + (1 if ci else 0) + (1 if tool else 0)
+    if not checks and not ci and not tool:
         add("add", "warn", "검증 명령을 찾지 못함", "Claude가 실행할 수 있는 검사가 없으면 '끝났다'는 Claude의 판단뿐이고 사용자가 검증 루프가 됩니다.", "테스트·lint·타입체크 중 하나를 스크립트로 만들고(마크업은 스크린샷 비교나 lint) 지침에 적습니다.", "best-practices")
-    elif checks and (f["agents"] or f["claude"]) and not any(c.lower() in text for c in checks):
+    elif checks and (f["agents"] or f["claude"]) and not any(re.search(r"(?<![a-z0-9])" + re.escape(c.lower()) + r"(?![a-z0-9])", text) for c in checks):
         add("add", "warn", "검증 명령이 지침에 적혀 있지 않음", "Claude는 어떤 명령이 이 프로젝트의 검사인지 추측해야 합니다.", "지침에 실제 명령 한 줄을 적습니다. 후보: " + ", ".join(checks[:3]), "best-practices")
-    if (f["agents"] or f["claude"]) and any((d / n).is_file() for n in ("docker-compose.yml", "docker-compose.yaml", "compose.yaml", "Makefile", "makefile")) and not re.search(r"docker|container|컨테이너|make up", text):
+    if (f["agents"] or f["claude"]) and any((d / n).is_file() for n in ("docker-compose.yml", "docker-compose.yaml", "compose.yaml")) and not re.search(r"docker|container|컨테이너|make up", text):
         add("add", "info", "명령이 컨테이너/호스트 어디서 도는지 안 적혀 있음", "Claude는 환경 특이점을 코드에서 알 수 없습니다. 잘못된 곳에서 실행하면 실패합니다.", "지침에 한 줄: 검증 명령을 컨테이너에서 실행하는지, 호스트에서 실행하는지.", "best-practices")
     return out
 
 
 def projects():
-    return [project_setup(d) for d in project_dirs()]
+    out = []
+    for d in project_dirs():
+        try:
+            out.append(project_setup(d))
+        except Exception:  # one unreadable project must not take the whole dashboard down
+            out.append({"name": d.name, "found": True, "error": True})
+    return out
 
 
 def state():
