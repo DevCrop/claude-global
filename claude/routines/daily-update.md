@@ -48,4 +48,4 @@ Not verified:
 
 ## Scheduling
 
-Create with the scheduled-task tool after the install phase is verified. Do not schedule before that.
+Created on the first machine on 2026-10-09. On a new machine, create it in the app's scheduled tasks from `claude/scheduled-tasks/daily-claude-update/SKILL.md` after replacing `<repo>`, and enable it on one machine only.

@@ -17,13 +17,13 @@ Runtime data (credentials, session history, auto-memory, plugins, caches) is nev
 
 ## Applying
 
-Run `scripts/apply.sh` (macOS bash or Git Bash on Windows). It backs up the managed files, then copies `CLAUDE.md`, `RTK.md`, `settings.json`, `agents/` and `routines/` into `~/.claude/` (or `CLAUDE_CONFIG_DIR`). Nothing else in that directory is touched. Update with `git pull && scripts/apply.sh`.
+Run `bash scripts/apply.sh` (macOS bash or Git Bash on Windows). On Windows, Git Bash `$HOME` must equal `%USERPROFILE%`; otherwise set `CLAUDE_CONFIG_DIR` to `%USERPROFILE%\.claude`. It backs up the managed files, then copies `CLAUDE.md`, `RTK.md`, `settings.json`, `agents/` and `routines/` into `~/.claude/` (or `CLAUDE_CONFIG_DIR`). Nothing else in that directory is touched. Update with `git pull && bash scripts/apply.sh`.
 
 Scope: local machines only. Cloud sessions read the project's own `.claude/`, not `~/.claude/`.
 
 ## Verifying
 
-Run `scripts/qa-deny.sh` on each machine after `apply.sh`. It needs the `claude` CLI, uses a throwaway repo with no remote and the haiku model, and prints PASS or FAIL per command. Undo an apply by copying files back from `~/.claude-backup-<timestamp>/`.
+Run `bash scripts/qa-deny.sh` on each machine after `apply.sh`. It needs the `claude` CLI, uses a throwaway repo with no remote and the haiku model, and prints PASS or FAIL per command. Undo an apply by copying files back from `~/.claude-backup-<timestamp>/`.
 
 ## Status
 

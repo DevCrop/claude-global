@@ -51,11 +51,12 @@
    ```
 3. 설정을 적용한다. Mac bash 또는 Windows Git Bash에서 실행한다.
    ```bash
-   cd claude-global && scripts/apply.sh
+   cd claude-global && bash scripts/apply.sh
    ```
    - 스크립트가 `CLAUDE.md`, `RTK.md`, `settings.json`, `agents/`, `routines/`만 `~/.claude`(또는 `CLAUDE_CONFIG_DIR`)로 복사한다. 덮어쓰기 전에 대상 파일을 `~/.claude-backup-<시각>/`에 백업한다. 자격 증명, `projects/`, 플러그인은 건드리지 않는다.
    - `CLAUDE.md` 마지막 줄 `@RTK.md`가 `RTK.md`를 import하므로 두 파일이 같은 폴더에 있어야 한다. 스크립트가 함께 복사한다.
-   - 이후 갱신은 `git pull && scripts/apply.sh`.
+   - 이후 갱신은 `git pull && bash scripts/apply.sh`.
+   - Windows: Git Bash의 `$HOME`이 `%USERPROFILE%`과 같아야 한다. 다르면 `CLAUDE_CONFIG_DIR`을 `%USERPROFILE%\.claude`로 지정한다. 셸 스크립트의 줄바꿈이 CRLF가 되면 `bash\r` 오류가 나므로 `.gitattributes`가 `*.sh`를 LF로 고정한다(Windows 실제 시험은 미실시).
    - 확인: Claude 세션에서 `/context`의 Memory files에 `CLAUDE.md`, `RTK.md`가 보이고 Custom agents에 `explorer`, `reviewer`가 보인다.
 4. RTK를 설치한다 (RTK 공식 README 기준).
    ```bash
@@ -65,7 +66,7 @@
    - RTK가 없어도 Bash는 동작한다. 훅은 non-blocking이라 실패해도 도구 호출이 진행된다(Claude Code hooks 문서). 필터링만 꺼진다.
    - `settings.json`에 RTK 훅(`rtk hook claude`)이 이미 들어 있다. `rtk init -g`를 실행하면 설정이 바뀔 수 있으니 실행 전후 `settings.json` 차이를 비교한다. (이미 훅이 들어 있는 현재 상태에서는 `rtk init -g`가 필수가 아니다.)
    - `rtk`가 PATH에 있어야 훅이 동작한다. 첫 컴퓨터에서는 winget 설치 직후 Git Bash PATH에 없었고, 훅은 앱 재시작 뒤 활성화됐다. 이후 같은 컴퓨터의 세션에서 `command -v rtk`가 WinGet 경로를 찾는 것을 확인했다. 새 컴퓨터에서는 새 터미널·앱 재시작 후 `rtk --version`으로 직접 확인한다.
-   - 확인: Bash 명령 몇 개 실행 뒤 `rtk gain`의 Total commands가 늘어난다. 그리고 `scripts/qa-deny.sh`가 전부 PASS여야 한다(RTK가 명령을 다시 써도 deny가 막는지 확인하는 시험, 아래 함정 절).
+   - 확인: Bash 명령 몇 개 실행 뒤 `rtk gain`의 Total commands가 늘어난다. 그리고 `bash scripts/qa-deny.sh`가 전부 PASS여야 한다(RTK가 명령을 다시 써도 deny가 막는지 확인하는 시험, 아래 함정 절).
 5. 예약 루틴을 만든다 (섹션 6, 경로 수정 필요).
 6. 섹션 7의 남은 작업을 순서대로 진행한다.
 
