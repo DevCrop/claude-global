@@ -46,13 +46,14 @@ Undo: copy files back from `~/.claude-backup-<timestamp>/`.
 
 ## 2. Bootstrap a project (once, before the first task)
 
-Run `/project-setup` in the project directory (manual-only skill). It reads manifests, CI workflows and lint configs, finds the verification command per area, and proposes `CLAUDE.md`, `.claude/rules/*.md` and `.claude/settings.json` as files for you to approve. It installs nothing and invents no commands; what it cannot confirm is listed under "Not verified". Writes under `.claude/` ask for your approval.
+Run `/project-setup` in the project directory (manual-only skill). It reads manifests, CI workflows and lint configs, finds the verification command per area, and proposes `CLAUDE.md`, `.claude/rules/*.md` and `.claude/settings.json` as files for you to approve. It installs nothing and invents no commands; what it cannot confirm is listed under "Not verified". Under the bypass default there is no permission prompt for writes, so the skill's own step 10 (an explicit yes in chat) is the approval.
 
 What to check afterwards:
 1. `CLAUDE.md` is under 200 lines and every line would cause a mistake if removed (`/doctor` proposes cuts).
 2. The verification commands are the ones CI or the scripts really run. For markup and CSS with no automated check, decide on a screenshot comparison or a lint and write it down; without a check Claude can run, "done" is only its own opinion.
 3. Path-scoped rules use the documented frontmatter, a YAML `paths:` list (the only field Claude Code reads in a rule).
-4. Permissions list only read-only check commands; each Bash rule has its `rtk ` twin where RTK is installed.
+4. Permissions: `deny` repeats the global `.env*` and credentials rules on purpose (cloud sessions and teammates do not read `~/.claude`); `allow` lists only read-only check commands and is inert locally under the global bypass default; each Bash rule has its `rtk ` twin where RTK is installed. No `defaultMode`.
+   Also pick how hard the check gates the work (prompt line, `/goal`, Stop hook, reviewer subagent; the skill asks) and add `CLAUDE.local.md` and `.claude/settings.local.json` to the project `.gitignore`.
 5. Feature-development projects only: `claude plugin install superpowers@claude-plugins-official --scope local` (`--scope project` shares it; each collaborator installs it themselves). Skip it for markup-only or small-fix projects. Not user scope.
 6. In a new session: `/context` shows the project `CLAUDE.md`, `/hooks` lists only intended hooks.
 
