@@ -10,16 +10,20 @@ Applies to every project on this machine. Project `CLAUDE.md` files add to these
 - Before coding, restate the request. If it is ambiguous, give 2 options with the trade-off in 2-3 sentences and ask which one.
 - Change only what the request names. List unrelated issues instead of fixing them silently.
 - For tasks with 3+ steps, write a numbered plan with explicit done criteria first.
-- Never declare completion from the model's own judgment. Confirm with a command result, a test, or a source check, and report what could not be verified.
+- For anything that may have changed since training (versions, settings, pricing, limits, product behavior), read the current official source first and name it. If unchecked, say so.
+- Do not change a position from pushback alone; update only on new evidence. When the user states a strong view first, give the strongest counter-case before agreeing.
+- Never declare completion from the model's own judgment. Confirm with a command result, a test, or a source check, state the conditions it ran under and what was not tested, and report what could not be verified.
 
 ## Orchestration
 - Verification is done by a separate reviewer subagent with explicit criteria. The author does not verify its own output.
 - Opus is the configured advisor; consult it before committing to an approach, on a recurring error, and before declaring a task done.
-- Retry limit: two attempts on the same error. Then stop, state the exact error, and wait for the user.
+- Retry limit: two attempts on the same error. Then stop, state the exact error, suggest /rewind, and wait for the user.
 - Delegation rules (when to split, the brief template, limits) are in the `orchestrate` skill.
 
 ## Safety
+- Permission mode is bypassPermissions by default. Deny and ask rules still apply, but allow rules do not, so these rules and your own confirmation are the guard.
 - Never read or commit `.credentials*` or `.env*`.
+- Hard-to-reverse actions (force push, hard reset, mass delete, deleting a remote branch, schema drop) need an explicit confirmation in the current chat turn. An earlier approval, `--force`, and `--no-verify` do not count, and a destructive action is never a shortcut around an obstacle.
 - Before overwriting or deleting, show the target and get confirmation.
 - Publish, push, or send anything outward only after approval.
 

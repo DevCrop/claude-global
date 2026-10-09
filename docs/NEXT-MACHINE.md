@@ -107,7 +107,7 @@
 - 제거한 키(공식 settings-reference의 기본값과 같아서 vanilla 기준으로 삭제, 2026-10-09): `autoUpdatesChannel: latest`(미설정 시 latest), `theme: dark`(기본 dark), `enableAllProjectMcpServers: false`(미설정 시 서버마다 승인 요청). 프로젝트 설정이 같은 키를 true로 두면 사용자 설정보다 우선하므로 false를 명시해도 보호가 되지 않는다.
 - `env.ENABLE_PROMPT_CACHING_1H`: 제거함. 공식 문서상 구독 플랜의 메인 대화는 기본이 1시간 TTL이라 중복이고, 이 변수는 서브에이전트·압축 요청까지 1시간으로 올려 쓰기 비용만 늘린다 (짧은 작업에는 손해).
 - `permissions.ask` 10개 (2026-10-09 추가, Bash 5패턴 `git push *`, `git branch -D *`, `git stash drop *`, `git stash clear *`, `rm *` × `rtk ` 짝). "승인 후에만 push, 삭제 전 확인" 규칙을 문장이 아니라 설정으로 강제한다. deny가 먼저 평가되므로 force push는 계속 거부된다. 끝의 ` *`은 인자 없는 명령에도 맞는다(공식 permissions 문서).
-- `permissions.disableBypassPermissionsMode: "disable"` (2026-10-09 추가): `bypassPermissions` 모드를 막는다. 이 모드는 deny 규칙을 무시하므로, AO 같은 도구가 워커를 `--permission-mode bypassPermissions`로 띄우는 실수를 사람의 기억이 아니라 설정으로 막는다(공식 permissions 문서, 어느 settings 범위에서나 동작).
+- `permissions.defaultMode: "bypassPermissions"` (2026-10-10 결정, 같은 날 `disableBypassPermissionsMode: "disable"`을 대체): 기본 권한 모드를 bypass로 둔다. 공식 permission-modes 문서(2026-10-10 확인)는 deny 규칙이 bypass를 포함한 모든 모드에서 적용되고, 명시적 ask 규칙과 중요 경로의 `rm`/`rmdir`은 bypass에서도 확인을 묻고, allow 규칙은 bypass에서 효과가 없다고 한다. 따라서 deny 53개와 ask 10개는 계속 방어선이다. 2026-10-09에 이 문서가 "bypass는 deny를 무시한다"고 적은 것은 틀린 서술이었다. `defaultMode: "bypassPermissions"`는 사용자 설정(`~/.claude/settings.json`)에서만 적용되고 프로젝트 `.claude/settings.json`에서는 무시된다. Desktop에서는 "Allow bypass permissions mode" 토글이 필요하다. 이 머신에서 deny와 ask가 bypass 아래 실제로 동작하는지는 아직 실측하지 못했다.
 - `permissions.deny` 53개 (원래 20개 + 변형 우회 8개 + 같은 Bash 패턴 25개를 `rtk ` 접두어로 복제한 것. 아래 함정 절 참고):
   - `Bash(rm -rf /*)`, `Bash(rm -rf ~*)`, `Bash(rm -rf $HOME*)`, `Bash(rm -rf %USERPROFILE%*)`
   - `Bash(git push --force *)`, `Bash(git push --force)`, `Bash(git push -f *)`, `Bash(git push -f)`
@@ -262,7 +262,7 @@ RTK 절감 (시점별로 값이 다르다):
 - 오케스트레이션 규칙(2026-10-09): 위임 기준, 브리프 템플릿, 동시 3개 상한, reviewer에는 기준과 파일 목록만, 서브에이전트 보고는 주장으로 취급은 항상 필요한 규칙이 아니라서 `claude/CLAUDE.md`가 아니라 스킬 `orchestrate`(`claude/skills/orchestrate/`)에 둔다(공식 best-practices: 가끔만 필요한 지식은 스킬로). description 자동 매칭은 확률적이라 안 불리면 `/orchestrate`로 직접 호출한다. `apply.sh`는 스킬을 하나씩 복사한다(같은 디렉터리에 archify 등 다른 스킬이 있다). 역할별(planner, coder, tester) 에이전트는 만들지 않는다.
 - `/context`, `/usage` 같은 슬래시 명령은 사용자가 직접 실행해야 한다 (대화형 UI 명령).
 - 변경은 브랜치와 PR로 올리고 머지는 사람이 한다. 자동 머지는 요청할 때만. push는 사용자 승인 후이고 force push는 쓰지 않는다. (삭제한 원래 계획 문서의 결정을 옮겨 적음)
-- Orchestrator.inc(AO): 도입 후보, 확정 아님(2026-10-09). 핵심 경로(실제 작업 완료)를 데스크톱 네이티브에서 확인하지 못했고, Claude Code 자체의 worktree·`isolation: worktree` 서브에이전트와 비교하지 않았다. 가드레일(bypass 모드 차단)은 `permissions.disableBypassPermissionsMode`로 설정에서 강제한다. 근거는 섹션 13.
+- Orchestrator.inc(AO): 도입 후보, 확정 아님(2026-10-09). 핵심 경로(실제 작업 완료)를 데스크톱 네이티브에서 확인하지 못했고, Claude Code 자체의 worktree·`isolation: worktree` 서브에이전트와 비교하지 않았다. 기본 권한 모드는 bypass이고(2026-10-10), deny와 ask 규칙이 가드레일이다. 근거는 섹션 13.
 
 ## 11. 함정과 주의사항
 
@@ -300,7 +300,7 @@ RTK 절감 (시점별로 값이 다르다):
 
 ### 가드레일 (필수)
 
-- **bypass 모드는 설정에서 막는다 (사람의 기억에 맡기지 않는다).** `claude/settings.json`의 `permissions.disableBypassPermissionsMode: "disable"`(공식 permissions 문서, 어느 settings 범위에서나 동작. 별도 PR `claude/permissions-hardening`)을 켜면 아래 위험이 설정으로 막힌다. 워커/프로젝트 permission 설정은 계속 `default`로 둔다. `bypassPermissions`를 선택하면 `claude`가 `--permission-mode bypassPermissions`로 실행되어 `claude/settings.json`의 deny 규칙이 전부 무시된다. 이건 Claude Code 자체 기능을 AO가 그대로 노출한 것이라 AO의 결함은 아니지만, 실수로 고르면 하네스가 무력화된다.
+- **기본 권한 모드는 bypass이고, 가드레일은 deny와 ask 규칙이다 (2026-10-10 변경).** 이전에는 `permissions.disableBypassPermissionsMode: "disable"`로 bypass를 막았다. 그 근거였던 "bypass면 deny 규칙이 전부 무시된다"는 현재 공식 permission-modes 문서와 맞지 않는다: deny 규칙은 모든 모드에서 적용되고, ask 규칙은 bypass에서도 묻고, allow 규칙만 효과가 없다. AO가 워커를 `--permission-mode bypassPermissions`로 띄워도 `claude/settings.json`의 deny는 적용되어야 한다. 단 이 머신에서 AO 워커 아래 deny가 실제로 막는지는 실측하지 못했다. 아래 "실측 검증"은 `approvalMode: default` 조건에서만 한 것이다.
   - 코드 근거: `backend/internal/adapters/agent/claudecode/claudecode.go`의 `permissionConfigEnum`, `backend/pkg/agentruntime/command.go`의 `ClaudePermissionArgs` (`default`는 플래그 자체를 안 붙여 `~/.claude/settings.json`을 그대로 따름).
 - 텔레메트리(`AO_TELEMETRY_EVENTS`, `AO_TELEMETRY_REMOTE`)는 기본 꺼짐. 클라우드 오퍼링(`AO_CLOUD_OFFERING`, `api.aoagents.dev`)은 가입해야 쓰임. 둘 다 그대로 둬도 영향 없음.
 - 데몬은 `127.0.0.1`에만 bind하고 `AO_HOST` 환경변수가 의도적으로 없음 (`backend/internal/config/config.go`). 터미널 WebSocket(`/mux`)은 Origin이 정확히 허용 목록 또는 loopback(`localhost`/`127.0.0.1`/`[::1]`)인 경우만 연결 허용, 그 외 403 (`backend/internal/httpd/cors.go`의 `isLoopbackOrigin`).

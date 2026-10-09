@@ -58,9 +58,18 @@ for f in "$repo"/scripts/*.sh; do bash -n "$f" 2>/dev/null || { fail "bash -n fa
 if out="$(bash "$repo/scripts/qa-deny.sh" --static 2>&1)"; then pass "$(printf '%s' "$out" | sed 's/^PASS  //')"; else fail "rtk twin check: $out"; fi
 
 # 4. settings that must stay on
-grep -q '"disableBypassPermissionsMode"[[:space:]]*:[[:space:]]*"disable"' "$src/settings.json" \
-  && pass "bypassPermissions mode is disabled in settings.json" \
-  || fail "permissions.disableBypassPermissionsMode is not \"disable\" (bypass mode ignores the deny rules)"
+# Default mode is bypassPermissions (decision 2026-10-10). Deny rules still apply in that mode (permission-modes doc), so they must exist;
+# a leftover bypass lock would stop the mode from starting.
+if command -v jq >/dev/null 2>&1; then
+  jq -e '(.permissions.defaultMode == "bypassPermissions") and (.permissions.disableBypassPermissionsMode == null)' "$src/settings.json" >/dev/null 2>&1 \
+    && pass "permissions.defaultMode is bypassPermissions and the bypass lock is absent" \
+    || fail "permissions.defaultMode must be bypassPermissions with no disableBypassPermissionsMode"
+  jq -e '(.permissions.deny | type == "array") and (.permissions.deny | length > 0)' "$src/settings.json" >/dev/null 2>&1 \
+    && pass "permissions.deny is a non-empty list (deny rules still apply in bypass mode)" \
+    || fail "permissions.deny is missing or empty"
+else
+  warn "bypass default and deny list not validated (needs jq)"
+fi
 # permissions.ask must be a non-empty array (a bare grep for "ask" would also match a comment or another key)
 ask_ok=""
 if command -v jq >/dev/null 2>&1; then
