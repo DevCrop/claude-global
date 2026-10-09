@@ -100,6 +100,8 @@
 - `statusLine`: `jq`로 `[모델] N% context`를 출력하는 command. `jq` 필요.
 - 제거한 키(공식 settings-reference의 기본값과 같아서 vanilla 기준으로 삭제, 2026-10-09): `autoUpdatesChannel: latest`(미설정 시 latest), `theme: dark`(기본 dark), `enableAllProjectMcpServers: false`(미설정 시 서버마다 승인 요청). 프로젝트 설정이 같은 키를 true로 두면 사용자 설정보다 우선하므로 false를 명시해도 보호가 되지 않는다.
 - `env.ENABLE_PROMPT_CACHING_1H`: 제거함. 공식 문서상 구독 플랜의 메인 대화는 기본이 1시간 TTL이라 중복이고, 이 변수는 서브에이전트·압축 요청까지 1시간으로 올려 쓰기 비용만 늘린다 (짧은 작업에는 손해).
+- `permissions.ask` 10개 (2026-10-09 추가, Bash 5패턴 `git push *`, `git branch -D *`, `git stash drop *`, `git stash clear *`, `rm *` × `rtk ` 짝). "승인 후에만 push, 삭제 전 확인" 규칙을 문장이 아니라 설정으로 강제한다. deny가 먼저 평가되므로 force push는 계속 거부된다. 끝의 ` *`은 인자 없는 명령에도 맞는다(공식 permissions 문서).
+- `permissions.disableBypassPermissionsMode: "disable"` (2026-10-09 추가): `bypassPermissions` 모드를 막는다. 이 모드는 deny 규칙을 무시하므로, AO 같은 도구가 워커를 `--permission-mode bypassPermissions`로 띄우는 실수를 사람의 기억이 아니라 설정으로 막는다(공식 permissions 문서, 어느 settings 범위에서나 동작).
 - `permissions.deny` 53개 (원래 20개 + 변형 우회 8개 + 같은 Bash 패턴 25개를 `rtk ` 접두어로 복제한 것. 아래 함정 절 참고):
   - `Bash(rm -rf /*)`, `Bash(rm -rf ~*)`, `Bash(rm -rf $HOME*)`, `Bash(rm -rf %USERPROFILE%*)`
   - `Bash(git push --force *)`, `Bash(git push --force)`, `Bash(git push -f *)`, `Bash(git push -f)`
