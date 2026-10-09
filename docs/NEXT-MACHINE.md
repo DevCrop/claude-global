@@ -93,13 +93,13 @@
 
 `claude/settings.json` (전부):
 - `model`: `sonnet`
-- `effortLevel`: `xhigh`
+- `effortLevel`: `high` (공식 기본은 medium, xhigh는 토큰 소모 증가. 되돌리려면 `/effort`로 세션 중 변경하거나 이 값을 바꾼다. Sonnet 5.5는 세션 중 변경해도 캐시 유지)
 - `advisorModel`: `opus`
 - `autoUpdatesChannel`: `latest`
 - `theme`: `dark`
 - `enableAllProjectMcpServers`: `false`
 - `env.ENABLE_PROMPT_CACHING_1H`: 제거함. 공식 문서상 구독 플랜의 메인 대화는 기본이 1시간 TTL이라 중복이고, 이 변수는 서브에이전트·압축 요청까지 1시간으로 올려 쓰기 비용만 늘린다 (짧은 작업에는 손해).
-- `permissions.deny` 20개:
+- `permissions.deny` 28개 (20개 + 변형 우회 8개: `rm -fr` 4개, `git push * --force`/`-f` 4개):
   - `Bash(rm -rf /*)`, `Bash(rm -rf ~*)`, `Bash(rm -rf $HOME*)`, `Bash(rm -rf %USERPROFILE%*)`
   - `Bash(git push --force *)`, `Bash(git push --force)`, `Bash(git push -f *)`, `Bash(git push -f)`
   - `Bash(git reset --hard *)`, `Bash(git reset --hard)`
@@ -110,7 +110,7 @@
 
 에이전트 (`claude/agents/`):
 - `reviewer`: model sonnet, effort high, 도구 Read/Grep/Glob/Bash. 다른 에이전트의 작업을 기준에 맞춰 검증한다.
-- `explorer`: model haiku, 도구 Read/Grep/Glob (읽기 전용). 질문 하나를 넓게 검색해 10줄 이내로 답한다.
+- `explorer`: model haiku, 도구 Read/Grep/Glob (읽기 전용), `omitClaudeMd: true`(호출마다 CLAUDE.md 로딩 생략, Claude Code v2.1.271 이상). 질문 하나를 넓게 검색해 10줄 이내로 답한다.
 
 규칙 요약 (`claude/CLAUDE.md`, 원문이 우선):
 - 한국어 응답. 요청을 먼저 되풀이하고, 모호하면 2~3개 해석을 제시.
@@ -165,7 +165,7 @@ Ponytail (미설치, 의도적 보류):
 
 ## 7. 남은 작업 (순서대로)
 
-0. 결정 대기: `effortLevel`(현재 xhigh, 공식 기본 medium, 권장 high), `explorer` 처리(`omitClaudeMd: true` 추가 또는 내장 `Explore` override). 브랜치 `claude/add-apply-script`의 커밋은 push 전이다. 맥과 Windows Git Bash에서 `scripts/apply.sh`를 한 번씩 실행해 확인한다. RTK는 0.51.0으로 올린다.
+0. 반영함(되돌릴 수 있음): `effortLevel`을 high로, `explorer`에 `omitClaudeMd: true`. 결정 대기: `rm -rf /*` 과차단 유지 여부, 루틴 자동 설치 허용 여부. 브랜치 `claude/add-apply-script`의 커밋은 push 전이다. 맥과 Windows Git Bash에서 `scripts/apply.sh`를 한 번씩 실행해 확인한다. RTK는 0.51.0으로 올린다.
 
 1. 루틴 모델을 Sonnet으로 고정 (앱 UI). 첫 자동 실행은 sonnet-5-5로 돌았지만 그것이 UI 설정 때문인지 기본값 때문인지 모른다. UI에서 명시적으로 지정한 뒤, 내일 이후 자동 실행 세션의 모델을 `get_session`으로 다시 확인한다.
 2. CLI 최신화: 일일 루틴 보고서에 업데이트 명령이 나오면 실행한다. 승인 필요. 확인: `claude --version`.
@@ -199,7 +199,11 @@ Ponytail (미설치, 의도적 보류):
 
 deny 규칙 시험:
 - 명령 `rm -rf ~/__deny_test_nonexistent__`가 `Bash(rm -rf ~*)`에 걸려 거부됨. 대상이 없는 경로라 실패해도 피해가 없는 시험이다.
-- deny 20개 중 이 1개만 시험했다. 나머지 19개의 개별 동작은 미확인이다.
+- 2026-10-09 추가 시험(격리 스크래치 저장소, `claude -p --settings`, 존재하지 않는 경로와 원격 없는 저장소만 사용, 모델 haiku). `permission_denials`로 판정:
+  - 차단 확인: `rm -rf ~/x`, `rm -rf $HOME/x`, `git push --force`, `git push -f`, `git reset --hard`, `git clean -fd`, `git checkout .`, `git restore .`, `git restore --staged .`, `git checkout -- f`, `Read .env`.
+  - 우회 발견 2건(차단 안 됨): `rm -fr ~/x`, `git push origin main --force`(플래그가 뒤). 이후 패턴 8개를 추가해 두 건과 `git push origin main -f`가 모두 차단됨을 재확인했다.
+  - 과차단 확인: `Bash(rm -rf /*)`의 `*`가 슬래시를 포함해 `rm -rf /tmp/x` 같은 모든 절대경로 삭제를 막는다. 결정 기록(위험 경로만 deny)의 의도보다 넓다. 유지할지 정해야 한다.
+  - 미시험: `rm -rf /*` 자체와 `%USERPROFILE%*`(파괴적이라 실행하지 않음), `rm -r -f` 같은 다른 분리 플래그 변형, 변수나 따옴표를 거친 우회. deny 패턴 매칭은 완전한 방어가 아니다.
 
 `/context` (모델 `claude-sonnet-5-5`, 첫 컴퓨터 세션):
 - 전체 77.5k / 1m (8%). 시스템 프롬프트 4.3k, 시스템 도구 19.7k(+deferred 20.3k), MCP 도구 12.2k(+deferred 45.7k), MCP 서버 지침 733, Skills 7.9k, 메시지 31.6k, 여유 889.5k, 자동 압축 버퍼 33k.
