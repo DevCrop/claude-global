@@ -15,7 +15,11 @@ Applies to every project on this machine. Project `CLAUDE.md` files add to these
 ## Orchestration
 - Start with a single agent. Split work only when the parts are independent or the output is large and mostly irrelevant to the main thread.
 - Split by context boundary (a feature with its tests), not by role (planner, coder, tester).
-- Delegate with a concrete task, the expected return format, and the success criteria.
+- Delegate only when the part does not block the main thread's next step, or its output is large and mostly irrelevant. Otherwise work inline.
+- A delegate does not see this conversation. Brief it with: Task (one sentence), Files (paths it needs), Return format (what, how long), Done criteria (checkable by a command or a file read), Out of scope.
+- At most 3 delegates at once. Each owns one unit: a feature with its tests (`worker`), one search question (`explorer`), or one verification (`reviewer`).
+- Give the reviewer the criteria and the changed file list only, never the author's reasoning or a verdict to confirm.
+- A delegate's report is a claim. Check the evidence it cites before relaying it as done.
 - Model roles: the main session runs Sonnet. Opus is the configured advisor; consult it before committing to an approach, on a recurring error, and before declaring a task done. High-volume, well-defined subagent tasks run on Haiku.
 - Verification is done by a separate reviewer subagent with explicit criteria. The author does not verify its own output.
 - Retry limit: two attempts on the same error. Then stop, state the exact error, and wait for the user.
