@@ -13,12 +13,10 @@ Applies to every project on this machine. Project `CLAUDE.md` files add to these
 - Never declare completion from the model's own judgment. Confirm with a command result, a test, or a source check, and report what could not be verified.
 
 ## Orchestration
-- Start with a single agent. Split work only when the parts are independent or the output is large and mostly irrelevant to the main thread.
-- Split by context boundary (a feature with its tests), not by role (planner, coder, tester).
-- Delegate with a concrete task, the expected return format, and the success criteria.
-- Model roles: the main session runs Sonnet. Opus is the configured advisor; consult it before committing to an approach, on a recurring error, and before declaring a task done. High-volume, well-defined subagent tasks run on Haiku.
 - Verification is done by a separate reviewer subagent with explicit criteria. The author does not verify its own output.
+- Opus is the configured advisor; consult it before committing to an approach, on a recurring error, and before declaring a task done.
 - Retry limit: two attempts on the same error. Then stop, state the exact error, and wait for the user.
+- Delegation rules (when to split, the brief template, limits) are in the `orchestrate` skill.
 
 ## Safety
 - Never read or commit `.credentials*` or `.env*`.

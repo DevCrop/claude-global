@@ -11,14 +11,15 @@ stamp="$(date +%Y%m%d-%H%M%S)"
 backup="$dest-backup-$stamp"
 
 # Files and directories copied. scheduled-tasks/ is excluded: it is created in the app.
-items="CLAUDE.md RTK.md settings.json agents routines"
+# Skills are listed one by one: other skills (for example archify) live in the same directory.
+items="CLAUDE.md RTK.md settings.json agents routines skills/orchestrate"
 
 mkdir -p "$dest"
 
 for item in $items; do
   if [ -e "$dest/$item" ]; then
-    mkdir -p "$backup"
-    cp -R "$dest/$item" "$backup/"
+    mkdir -p "$backup/$(dirname "$item")"
+    cp -R "$dest/$item" "$backup/$(dirname "$item")/"
   fi
 done
 [ -d "$backup" ] && echo "backup: $backup"
