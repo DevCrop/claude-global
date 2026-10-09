@@ -249,9 +249,9 @@ RTK 절감 (시점별로 값이 다르다):
 - `reports/`는 로컬 전용(`.gitignore`)으로 유지한다.
 - Ponytail은 설치하지 않는다. Archify는 요청 시에만, 검토 후 승인받고 설치한다.
 - 루틴 모델은 첫 실행만 Haiku, 이후 Sonnet.
+- 오케스트레이션 규칙(2026-10-09): 위임 기준, 브리프 템플릿, 동시 3개 상한, reviewer에는 기준과 파일 목록만, 서브에이전트 보고는 주장으로 취급은 항상 필요한 규칙이 아니라서 `claude/CLAUDE.md`가 아니라 스킬 `orchestrate`(`claude/skills/orchestrate/`)에 둔다(공식 best-practices: 가끔만 필요한 지식은 스킬로). description 자동 매칭은 확률적이라 안 불리면 `/orchestrate`로 직접 호출한다. `apply.sh`는 스킬을 하나씩 복사한다(같은 디렉터리에 archify 등 다른 스킬이 있다). 역할별(planner, coder, tester) 에이전트는 만들지 않는다.
 - `/context`, `/usage` 같은 슬래시 명령은 사용자가 직접 실행해야 한다 (대화형 UI 명령).
 - 변경은 브랜치와 PR로 올리고 머지는 사람이 한다. 자동 머지는 요청할 때만. push는 사용자 승인 후이고 force push는 쓰지 않는다. (삭제한 원래 계획 문서의 결정을 옮겨 적음)
-- 오케스트레이션 규칙(2026-10-09): 위임 기준, 브리프 템플릿, 동시 3개 상한, reviewer에는 기준과 파일 목록만, 서브에이전트 보고는 주장으로 취급은 항상 필요한 규칙이 아니라서 `claude/CLAUDE.md`가 아니라 스킬 `orchestrate`(`claude/skills/orchestrate/`)에 둔다(공식 best-practices: 가끔만 필요한 지식은 스킬로). description 자동 매칭은 확률적이라 안 불리면 `/orchestrate`로 직접 호출한다. `apply.sh`는 스킬을 하나씩 복사한다(같은 디렉터리에 archify 등 다른 스킬이 있다). 역할별(planner, coder, tester) 에이전트는 만들지 않는다.
 
 ## 11. 함정과 주의사항
 
