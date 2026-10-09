@@ -32,7 +32,7 @@ Applies to every project on this machine. Project `CLAUDE.md` files add to these
 
 ## Tools
 - Diagrams: Archify is used only when the user asks for a diagram.
-- Ponytail is not active by default.
+- Ponytail is always on (plugin `ponytail@ponytail`, enabled in `settings.json`). `/ponytail off` turns it off for a session.
 
 ## Updates
 - Claude Code updates itself on the default channel. The daily routine in `routines/daily-update.md` reports new releases and tool health and proposes config changes. Changes are applied only after review.

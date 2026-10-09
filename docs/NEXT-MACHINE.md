@@ -32,7 +32,7 @@
 | Claude Code CLI | npm 최신 2.1.295 (2026-10-09 확인). 머신마다 `claude --version`으로 확인 |
 | 상태줄 `statusLine` | 모델과 컨텍스트 %를 표시. `jq`가 PATH에 있어야 한다 (섹션 2의 4단계) |
 | Archify | 미설치, 다이어그램 요청 시 |
-| Ponytail | 미설치, 의도적 보류 |
+| Ponytail | 설치됨, 상시 켜짐 (2026-10-09 결정). `settings.json`의 `enabledPlugins`로 활성 |
 | 프로젝트 셋업·최적화 | 나중 단계 |
 
 소스 오브 트루스는 이 저장소(`DevCrop/claude-global`, branch `main`)다. 라이브 설정은 `~/.claude`이며 `claude/` 폴더에서 복사해 만든다.
@@ -69,8 +69,10 @@
    - `rtk`가 PATH에 있어야 훅이 동작한다. 첫 컴퓨터에서는 winget 설치 직후 Git Bash PATH에 없었고, 훅은 앱 재시작 뒤 활성화됐다. 이후 같은 컴퓨터의 세션에서 `command -v rtk`가 WinGet 경로를 찾는 것을 확인했다. 새 컴퓨터에서는 새 터미널·앱 재시작 후 `rtk --version`으로 직접 확인한다.
    - 확인: Bash 명령 몇 개 실행 뒤 `rtk gain`의 Total commands가 늘어난다. 그리고 `bash scripts/qa-deny.sh`가 전부 PASS여야 한다(RTK가 명령을 다시 써도 deny가 막는지 확인하는 시험, 아래 함정 절).
    - `jq`를 설치한다. 상태줄(`statusLine`)이 `jq`로 세션 정보를 읽으므로 없으면 상태줄이 비거나 깨진다. 설치는 jq 공식 릴리스(https://github.com/jqlang/jq/releases) 또는 각 OS 패키지 관리자로 한다(패키지 ID는 확인하지 않았다). 확인: `command -v jq`, 새 세션 하단에 `[모델] N% context`가 보인다.
-5. 예약 루틴을 만든다 (섹션 6, 경로 수정 필요).
-6. 섹션 7의 남은 작업을 순서대로 진행한다.
+5. Ponytail을 설치한다 (상시 사용, 섹션 5의 명령). `apply.sh`가 `enabledPlugins`를 넣어 주지만 플러그인 파일은 설치해야 받아진다(자동 설치 여부는 확인하지 못했다).
+   - 확인: `claude plugin list`에서 `ponytail@ponytail`이 enabled, 새 세션에서 `~/.claude/.ponytail-active`가 `full`.
+6. 예약 루틴을 만든다 (섹션 6, 경로 수정 필요).
+7. 섹션 7의 남은 작업을 순서대로 진행한다.
 
 ## 3. 첫 컴퓨터에만 있는 것
 
@@ -134,18 +136,18 @@ RTK 0.50.0:
 - 훅은 Bash 도구 호출만 가로챈다. Read, Grep, Glob은 필터되지 않는다.
 - 절감률은 표본에 따라 크게 다르다. 수치는 섹션 9.
 
-Archify (미설치):
-- 다이어그램을 요청할 때만 쓴다. 설치 전 `SKILL.md`를 읽어 검토하고 사용자 승인을 받는다.
+Archify (설치됨, 요청 시에만 사용):
+- 다이어그램을 요청할 때만 쓴다. Mac에는 2026-10-09에 사용자 요청으로 설치했다(`npx -y skills add tt-a1i/archify --skill archify --agent claude-code --global --copy --yes`, 설치 위치 `~/.claude/skills/archify`). 설치 전 `SKILL.md`와 `bin/*.mjs`를 읽어 검토했다. 24시간마다 업데이트 확인 GET이 나가며 `ARCHIFY_UPDATE_CHECK_DISABLED=1`로 끌 수 있다. 출력은 `.archify/`(`.gitignore`)에 쌓인다.
 - 명령: `npx skills add tt-a1i/archify -g`. 최신 릴리스 v3.0.1(2026-09-28), MIT. README는 업데이트 명령을 주지 않고 "업데이트는 자동 설치되지 않는다"고만 한다. 같은 설치 명령 재실행이 업데이트일 가능성이 높지만 확인하지 못했다.
 - 지금까지의 흐름도·차트는 앱 내장 시각화로 그렸다.
 
-Ponytail (미설치, 의도적 보류):
-- 출처: `DietrichGebert/ponytail`(MIT). 매 세션 상시 지침이 추가되므로 기본 비활성이다. 프로젝트별로만 재검토한다. 같은 이름의 다른 저장소(`mikrammullah/PonyTail` 등)와 헷갈리지 않는다.
+Ponytail (설치됨, 상시 켜짐):
+- 출처: `DietrichGebert/ponytail`(MIT). 매 세션 상시 지침이 추가된다(`claude plugin details ponytail` 기준 약 641토큰). 2026-10-09에 사용자가 상시 사용으로 결정했다. 설치 전 훅 JS 7개를 읽었고 네트워크 호출은 없으며 외부 프로세스는 `git ls-files`뿐이다(`SKILL.md` 본문은 읽지 않았다). 같은 이름의 다른 저장소(`mikrammullah/PonyTail` 등)와 헷갈리지 않는다.
 - 최신 버전 5.1.0(2026-10-08, `.claude-plugin/plugin.json`의 `version`). 릴리스 태그는 없어서 이 파일이 버전 기준이다.
-- 설치(두 프롬프트로 따로): `/plugin marketplace add DietrichGebert/ponytail`, `/plugin install ponytail@ponytail`. 끄기: `/ponytail off`. Node.js 훅을 쓴다는 설치 가이드 설명이 있다(README 원문 미확인).
+- 설치(Mac에서 CLI로 확인): `claude plugin marketplace add DietrichGebert/ponytail`, `claude plugin install ponytail@ponytail`. 앱 안에서는 `/plugin marketplace add ...`, `/plugin install ponytail@ponytail`. 설치하면 `~/.claude/settings.json`에 `enabledPlugins`와 `extraKnownMarketplaces`가 들어가고, 같은 키가 이제 저장소 `claude/settings.json`에도 있다. 끄기: `/ponytail off`. 검증: 새 세션에서 `.ponytail-active`가 `full`로 기록되고 `qa-deny.sh`가 계속 PASS. Node.js 훅을 쓴다는 설치 가이드 설명이 있다(README 원문 미확인).
 - 업데이트 경로 `/plugin marketplace update ponytail` + `/reload-plugins`는 설치 가이드 출처이며 README에서는 확인하지 못했다.
 
-두 도구의 최신 버전은 일일 루틴이 추적한다(섹션 6). 설치는 루틴이 하지 않는다.
+두 도구의 최신 버전은 일일 루틴이 추적한다(섹션 6). 설치와 업데이트는 루틴이 하지 않는다. Ponytail이 없거나 꺼져 있으면 루틴이 이상으로 보고한다.
 
 ## 6. 예약 루틴 `daily-claude-update`
 
@@ -161,7 +163,7 @@ Ponytail (미설치, 의도적 보류):
   2. 본문 안의 `<repo>`를 새 컴퓨터의 claude-global clone 절대 경로로 바꾼다.
   3. 모델은 앱의 Scheduled 화면에서 Sonnet으로 지정한다.
   4. 한 번 수동 실행해 보고서가 생기는지 확인한다.
-- 두 컴퓨터에서 같은 루틴을 켜면 보고서가 중복되고 `state/last-seen.json`이 충돌한다. 한쪽만 켠다.
+- 두 컴퓨터에서 같은 루틴을 켜도 된다(2026-10-09 결정). `reports/`는 컴퓨터마다 로컬이라 겹치지 않고 각자 설치 상태를 점검한다. 충돌 지점은 git으로 공유되는 `state/last-seen.json` 하나다: `git pull`이 막히면 `git checkout -- state/last-seen.json` 후 pull한다. 이 파일의 `installed_*` 값은 마지막으로 돌린 컴퓨터 기준이다.
 - 루틴 절차(`claude/routines/daily-update.md`): `claude --version` → 공식 변경 로그와 Anthropic 뉴스 확인 → 항목 분류(관련/참고/무시) → 보고서 작성 → `last-seen.json` 갱신. 설치·push·`~/.claude` 수정은 하지 않는다.
 
 ## 7. 남은 작업 (순서대로)
@@ -183,7 +185,7 @@ Ponytail (미설치, 의도적 보류):
    ```
    (첫 컴퓨터는 `--prefix "C:/Users/edn_y/AppData/Roaming/npm"`이 필요했다.)
 3. Archify: 다이어그램이 필요할 때만 (섹션 5).
-4. Ponytail: 설치하지 않는다 (섹션 5).
+4. Ponytail: 상시 사용. 새 컴퓨터에서는 섹션 5의 설치 명령으로 설치하고 `/ponytail`로 모드를 확인한다.
 5. 프로젝트 셋업·최적화: 별도 계획으로. 컨텍스트에서 큰 비중은 시스템 도구와 MCP 도구이며 Chrome 연동·Browser 도구가 많다. 쓰지 않는 커넥터를 끄는 것이 후보다.
 6. `reports/` 버전 관리: 현재 로컬 전용으로 결정함 (섹션 10).
 
@@ -247,7 +249,8 @@ RTK 절감 (시점별로 값이 다르다):
 - 일반 `rm -rf *`를 deny에 추가하지 않는다. 전부 막으면 명시적으로 요청한 정리도 막힌다. 위험 경로(`/*`, `~*`, `$HOME*`, `%USERPROFILE%*`)만 deny다.
 - `HANDOFF.md`(첫 컴퓨터의 로컬 인계 메모)는 커밋하지 않는다. 내용은 이 문서에 흡수됐다. `.gitignore`에도 없으니 `git add .`로 실수로 올리지 않도록 주의한다.
 - `reports/`는 로컬 전용(`.gitignore`)으로 유지한다.
-- Ponytail은 설치하지 않는다. Archify는 요청 시에만, 검토 후 승인받고 설치한다.
+- Ponytail은 상시 사용한다(2026-10-09 변경, 이전 결정은 "설치하지 않는다"). 이유는 사용자 선호이며, 비용은 세션당 약 641토큰과 Node 훅이다. Archify는 요청 시에만, 검토 후 승인받고 설치한다(Mac은 2026-10-09 설치됨).
+- 일일 루틴은 두 컴퓨터(Mac, 데스크탑)에서 모두 돌린다. 이전 결정("한쪽만")을 바꿨다.
 - 루틴 모델은 첫 실행만 Haiku, 이후 Sonnet.
 - `/context`, `/usage` 같은 슬래시 명령은 사용자가 직접 실행해야 한다 (대화형 UI 명령).
 - 변경은 브랜치와 PR로 올리고 머지는 사람이 한다. 자동 머지는 요청할 때만. push는 사용자 승인 후이고 force push는 쓰지 않는다. (삭제한 원래 계획 문서의 결정을 옮겨 적음)

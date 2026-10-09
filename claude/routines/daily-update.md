@@ -16,15 +16,16 @@ Note: the scheduled task has no model field, so it runs on the app default. The 
 6. Tool versions. Claude Code: installed (`claude --version`) against latest (`npm view @anthropic-ai/claude-code version`, cross-checked with the newest changelog entry; if `npm` is not installed, which is normal for the native installer, use the newest changelog entry alone). RTK: installed (`rtk --version`) against latest (`https://github.com/rtk-ai/rtk/releases/latest`). For each outdated tool, write the update command (npm, `winget upgrade rtk-ai.rtk` or `brew upgrade rtk`) in the report without running it.
    Optional tools, tracked whether or not they are installed:
    - Archify: latest = the release tag at `https://github.com/tt-a1i/archify/releases/latest`. Installed = `~/.claude/skills/archify/` exists (version only if its SKILL.md states one, else unknown). The README does not say where its installer writes files, so a missing folder means "not found", not proof of absence. The README gives no update command and says updates are never automatic; report re-running `npx skills add tt-a1i/archify -g` as unverified.
-   - Ponytail: latest = `version` in `https://raw.githubusercontent.com/DietrichGebert/ponytail/main/.claude-plugin/plugin.json` (the repo publishes no release tags). Installed = an entry named `ponytail` in `~/.claude/plugins/installed_plugins.json`. Update path from install guides, unverified in the README: `/plugin marketplace update ponytail`, then `/reload-plugins`.
-   - Never install either one. Ponytail stays off by decision (it adds always-on behavior to every session); Archify is installed only when the user asks for a diagram, after reading its SKILL.md. Report only "not installed, latest x.y.z" and the changelog entries since the last run that matter to us.
+   - Ponytail: latest = `version` in `https://raw.githubusercontent.com/DietrichGebert/ponytail/main/.claude-plugin/plugin.json` (the repo publishes no release tags). Installed = an entry named `ponytail` in `~/.claude/plugins/installed_plugins.json`, enabled = `"ponytail@ponytail": true` under `enabledPlugins` in `settings.json`. Update path from install guides, unverified in the README: `/plugin marketplace update ponytail`, then `/reload-plugins`.
+   - Never install or update either one. Ponytail is always on by decision (2026-10-09): it is expected to be installed and enabled, so "not installed" or "disabled" is reported as unhealthy. Archify is installed only when the user asks for a diagram, after reading its SKILL.md; "not installed, latest x.y.z" is normal for it. Report the changelog entries since the last run that matter to us.
 7. Tool health, read-only:
    - Config drift: `diff -r` of `claude/{CLAUDE.md,RTK.md,settings.json,agents,routines}` against the Claude config directory (`CLAUDE_CONFIG_DIR` or `~/.claude`). Any difference is reported, not fixed.
    - RTK on PATH: `command -v rtk`. Missing means the hook is a no-op and Bash output is not filtered.
+   - Ponytail: installed and enabled (see step 6). Its hooks write a `.ponytail-active` flag in the config directory; that is the plugin's own write, not an edit by this routine.
    - RTK in use: `rtk gain` total commands against `rtk_total_commands` in `state/last-seen.json`. An unchanged count since the last run is a signal, not proof, because no Bash may have run. Say which it is when unknown.
 8. Write `reports/YYYY-MM-DD.md` in this repository with: tool versions, new items, tool health, proposed changes, and what was not verified.
 9. Update `state/last-seen.json` with the latest changelog version, `installed_rtk`, `latest_rtk_version`, `rtk_total_commands`, `latest_archify_version` and `latest_ponytail_version`. Write a value only if it was read this run.
-10. Do not edit the Claude config directory, do not install anything, and do not push. A proposed change is applied only after the user approves it in chat.
+10. Do not edit the Claude config directory (the Ponytail flag file above is exempt), do not install anything, and do not push. A proposed change is applied only after the user approves it in chat.
 
 ## Output format
 
@@ -33,7 +34,7 @@ Date: YYYY-MM-DD
 Claude Code: installed x.y.z | latest x.y.z | update command (if outdated)
 RTK: installed x.y.z | latest x.y.z | update command (if outdated)
 Archify: not installed or x.y.z | latest x.y.z | changes since last run
-Ponytail: not installed or x.y.z | latest x.y.z | changes since last run
+Ponytail: installed x.y.z, enabled yes/no (or NOT INSTALLED, unhealthy) | latest x.y.z | changes since last run
 Tool health:
 - config drift | none or list of files
 - rtk on PATH | yes/no
@@ -48,4 +49,4 @@ Not verified:
 
 ## Scheduling
 
-Created on the first machine on 2026-10-09. On a new machine, create it in the app's scheduled tasks from `claude/scheduled-tasks/daily-claude-update/SKILL.md` after replacing `<repo>`, and enable it on one machine only.
+Created on the first machine on 2026-10-09. On a new machine, create it in the app's scheduled tasks from `claude/scheduled-tasks/daily-claude-update/SKILL.md` after replacing `<repo>`, and enable it on every machine that should be checked. Each machine writes its own local `reports/`; `state/last-seen.json` is shared through git, so see the pull note in the project `CLAUDE.md`.

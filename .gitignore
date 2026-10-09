@@ -25,3 +25,6 @@ ide/
 # OS and editor
 Thumbs.db
 .vscode/
+
+# Archify diagram output
+.archify/
