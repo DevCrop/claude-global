@@ -19,7 +19,7 @@ Note: the scheduled task has no model field, so it runs on the app default. The 
    - Ponytail: latest = `version` in `https://raw.githubusercontent.com/DietrichGebert/ponytail/main/.claude-plugin/plugin.json` (the repo publishes no release tags). Installed = an entry named `ponytail` in `~/.claude/plugins/installed_plugins.json`. Update path from install guides, unverified in the README: `/plugin marketplace update ponytail`, then `/reload-plugins`.
    - Never install either one. Ponytail stays off by decision (it adds always-on behavior to every session); Archify is installed only when the user asks for a diagram, after reading its SKILL.md. Report only "not installed, latest x.y.z" and the changelog entries since the last run that matter to us.
 7. Tool health, read-only:
-   - Config drift: `diff -r` of `claude/{CLAUDE.md,RTK.md,settings.json,agents,routines}` against the Claude config directory (`CLAUDE_CONFIG_DIR` or `~/.claude`). Any difference is reported, not fixed.
+   - Config drift: `diff -r` of `claude/{CLAUDE.md,RTK.md,settings.json,agents,routines,skills/orchestrate}` against the Claude config directory (`CLAUDE_CONFIG_DIR` or `~/.claude`). Any difference is reported, not fixed.
    - RTK on PATH: `command -v rtk`. Missing means the hook is a no-op and Bash output is not filtered.
    - RTK in use: `rtk gain` total commands against `rtk_total_commands` in `state/last-seen.json`. An unchanged count since the last run is a signal, not proof, because no Bash may have run. Say which it is when unknown.
 8. Write `reports/YYYY-MM-DD.md` in this repository with: tool versions, new items, tool health, proposed changes, and what was not verified.
