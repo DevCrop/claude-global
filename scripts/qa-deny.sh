@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Checks on THIS machine that the deny rules in claude/settings.json block dangerous
+# Checks on THIS machine that the deny and ask rules in claude/settings.json stop dangerous
 # Bash commands while the configured hooks (for example rtk) are active.
+# Pass --static to run only the rtk-twin check (no claude CLI, no network, read-only).
 # Runs in a throwaway git repo with no remote. Blocked commands never execute and
 # the allowed ones are harmless. Needs the claude CLI and uses the haiku model.
 # Works on macOS bash and Git Bash on Windows (no python or jq needed).
@@ -11,7 +12,7 @@ settings="${CLAUDE_QA_SETTINGS:-$repo/claude/settings.json}"
 
 fail=0
 
-# Static check, no CLI needed: every Bash deny pattern needs an `rtk `-prefixed twin
+# Static check, no CLI needed: every Bash deny or ask pattern needs an `rtk `-prefixed twin
 # and the reverse, because permission rules are evaluated on the hook-rewritten input.
 [ -f "$settings" ] || { echo "settings not found: $settings" >&2; exit 2; }
 bash_rules="$(grep -o '"Bash([^"]*)"' "$settings" | sed 's/^"Bash(//; s/)"$//')"
@@ -25,13 +26,15 @@ while IFS= read -r rule; do
   if printf '%s\n' "$bash_rules" | grep -Fqx -- "$twin"; then
     twins=$((twins + 1))
   else
-    printf 'FAIL  deny rule without twin: Bash(%s) needs Bash(%s)\n' "$rule" "$twin"
+    printf 'FAIL  rule without twin: Bash(%s) needs Bash(%s)\n' "$rule" "$twin"
     fail=1
   fi
 done <<EOF2
 $bash_rules
 EOF2
-[ "$fail" -eq 0 ] && printf 'PASS  all %d Bash deny rules have an rtk twin\n' "$twins"
+[ "$fail" -eq 0 ] && printf 'PASS  all %d Bash deny and ask rules have an rtk twin\n' "$twins"
+
+[ "${1:-}" = "--static" ] && exit "$fail"
 
 command -v claude >/dev/null 2>&1 || { echo "claude CLI not found in PATH" >&2; exit 2; }
 if command -v rtk >/dev/null 2>&1; then
@@ -74,6 +77,9 @@ check blocked 'rm -fr ~/__qa_nonexistent__'
 check blocked 'git clean -fd .'
 check blocked 'git checkout -- f.txt'
 check blocked 'git restore .'
+check blocked 'git push origin main'
+check blocked 'rm __qa_nonexistent_file'
+check blocked 'git branch -D __qa_nonexistent_branch'
 check runs    'git status'
 
 [ "$fail" -eq 0 ] && echo "all checks passed" || echo "some checks failed"
