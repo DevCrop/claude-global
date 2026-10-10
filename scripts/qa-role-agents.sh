@@ -2,8 +2,10 @@
 # QA for the role agents (publisher, frontend, backend, qa). Builds a throwaway web project per case, runs one web-agency
 # situation with `claude -p`, and grades the stream and the project mechanically.
 # Usage: bash scripts/qa-role-agents.sh <work-dir> [case...]   (default: all cases; names are listed in CASES below)
-# Needs: claude CLI (sonnet, costs tokens; ~12 runs), jq, git, python3. Writes only under <work-dir>, but the claude runs use your
-# global settings (bypass default) and nothing stops a model from writing elsewhere: run it on a machine where that is acceptable.
+# Needs: claude CLI (sonnet, costs tokens; ~12 runs), jq, git, python3. Writes only under <work-dir>, but nothing stops a model from
+# writing elsewhere: run it on a machine where that is acceptable. Every run gets --settings claude/settings.json (deny and ask rules) and --permission-mode bypassPermissions (this repo's default;
+# the settings file alone did not change the mode in -p). Without it, background subagents have their Edit and Bash
+# denied ("Permission prompts are not available in this context") and every case fails for that reason, not because of the agent.
 # Run `claude auth login` once first: a logged-out CLI makes every case fail with "no subagent ran".
 # QA_MODE=grade only grades <work-dir>/_out/<case>.jsonl and the kept project dirs.
 # What a PASS means: the mechanical condition held in that single run. Models vary run to run; a FAIL is a finding to read in
@@ -112,8 +114,8 @@ grade() { n="$1"; d="$work/$n"; s="$work/_out/$n.jsonl"
 if [ "${QA_MODE:-}" != grade ]; then
   i=0
   for n in $names; do
-    mk "$n"; p="$(prompt "$n")"
-    ( cd "$work/$n" && timeout 900 claude -p "$p" --output-format stream-json --verbose --max-turns 12 --no-session-persistence > "$work/_out/$n.jsonl" 2> "$work/_out/$n.err" ) &
+    mk "$n"; p="$(prompt "$n") 사용자에게 되묻지 말고 바로 위임하고, 서브에이전트의 보고를 그대로 전달해."
+    ( cd "$work/$n" && timeout 900 claude -p "$p" --settings "$repo/claude/settings.json" --permission-mode bypassPermissions --output-format stream-json --verbose --max-turns 12 --no-session-persistence > "$work/_out/$n.jsonl" 2> "$work/_out/$n.err" ) &
     i=$((i + 1)); [ $((i % 3)) -eq 0 ] && wait
   done
   wait
