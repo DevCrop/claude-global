@@ -194,5 +194,5 @@ def debug(session_file):
                 out["counts"][k] = out["counts"].get(k, 0) + 1
                 out["tools"][tool] = out["tools"].get(tool, 0) + 1
                 out["errors"].append({"at": d.get("timestamp"), "tool": tool, "kind": k, "detail": detail})
-    out["errors"] = out["errors"][-30:]
+    out["errors"] = out["errors"][-60:]
     return out
