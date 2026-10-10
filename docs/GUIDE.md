@@ -42,6 +42,8 @@ bash scripts/verify.sh --full    # also runs qa-deny.sh (claude CLI + haiku); ru
 
 Done when `verify.sh --live` prints `0 FAIL`. WARN lines are informational (for example no `.ponytail-active` flag before the first new session). Then spot-check by hand: `rtk gain` total commands grows after a few Bash calls, the status line shows `[model] N% context`, `/context` lists the global `CLAUDE.md`, and `claude plugin details ponytail` shows its always-on token cost.
 
+A machine-local `env` block in the live `settings.json` (for example `CLAUDE_CODE_TMPDIR`) is kept by `apply.sh` and ignored by `verify.sh`; the repo copy has no `env`.
+
 Undo: copy files back from `~/.claude-backup-<timestamp>/`.
 
 ## 2. Bootstrap a project (once, before the first task)

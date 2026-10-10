@@ -101,7 +101,7 @@
 - `advisorModel`: `opus`
 - `autoCompactWindow`: `400000` (2026-10-09). 컨텍스트가 400K 토큰에 이르면 자동 압축한다. 기본(`auto`)은 네이티브 1M 모델(Sonnet 5.5)에서 약 967K. 근거는 best-practices의 "컨텍스트가 차면 성능이 떨어진다"이며 이 사용 패턴으로 측정한 값은 아니다. 압축이 너무 잦으면 600000 쪽으로 올린다. 이 값은 저장소에서만 관리한다: `/autocompact`는 `~/.claude/settings.json`의 모델별 `modelSettings`에 저장되어 `apply.sh`가 덮어쓰고 `verify.sh --live`에 drift로 잡힌다. 우선순위는 환경 변수 `CLAUDE_CODE_AUTO_COMPACT_WINDOW` > `--autocompact` > `/autocompact`(모델별 저장값) > 이 키.
 - `statusLine`: `jq`로 `[모델] N% context`를 출력하는 command. `jq` 필요.
-- 제거한 키(공식 settings-reference의 기본값과 같아서 vanilla 기준으로 삭제, 2026-10-09): `autoUpdatesChannel: latest`(미설정 시 latest), `theme: dark`(기본 dark), `enableAllProjectMcpServers: false`(미설정 시 서버마다 승인 요청). 프로젝트 설정이 같은 키를 true로 두면 사용자 설정보다 우선하므로 false를 명시해도 보호가 되지 않는다.
+- 제거한 키(공식 settings-reference의 기본값과 같아서 vanilla 기준으로 삭제, 2026-10-09): `autoUpdatesChannel: latest`(미설정 시 latest), `enableAllProjectMcpServers: false`(미설정 시 서버마다 승인 요청). `theme: dark`는 2026-10-10에 다시 넣었다(PR #27, 이 머신의 라이브 값을 저장소로 옮김). 프로젝트 설정이 같은 키를 true로 두면 사용자 설정보다 우선하므로 false를 명시해도 보호가 되지 않는다.
 - `env.ENABLE_PROMPT_CACHING_1H`: 제거함. 공식 문서상 구독 플랜의 메인 대화는 기본이 1시간 TTL이라 중복이고, 이 변수는 서브에이전트·압축 요청까지 1시간으로 올려 쓰기 비용만 늘린다 (짧은 작업에는 손해).
 - `permissions.ask` 10개 (2026-10-09 추가, Bash 5패턴 `git push *`, `git branch -D *`, `git stash drop *`, `git stash clear *`, `rm *` × `rtk ` 짝). "승인 후에만 push, 삭제 전 확인" 규칙을 문장이 아니라 설정으로 강제한다. deny가 먼저 평가되므로 force push는 계속 거부된다. 끝의 ` *`은 인자 없는 명령에도 맞는다(공식 permissions 문서).
 - `permissions.defaultMode: "bypassPermissions"` (2026-10-10 결정, 같은 날 `disableBypassPermissionsMode: "disable"`을 대체): 기본 권한 모드를 bypass로 둔다. 공식 permission-modes 문서(2026-10-10 확인)는 deny 규칙이 bypass를 포함한 모든 모드에서 적용되고, 명시적 ask 규칙과 중요 경로의 `rm`/`rmdir`은 bypass에서도 확인을 묻고, allow 규칙은 bypass에서 효과가 없다고 한다. 따라서 deny 53개와 ask 10개는 계속 방어선이다. 2026-10-09에 이 문서가 "bypass는 deny를 무시한다"고 적은 것은 틀린 서술이었다. `defaultMode: "bypassPermissions"`는 사용자 설정(`~/.claude/settings.json`)에서만 적용되고 프로젝트 `.claude/settings.json`에서는 무시된다. Desktop에서는 "Allow bypass permissions mode" 토글이 필요하다. 2026-10-10 실측(bypass 세션, 이 머신): `Read` 존재하지 않는 `.env.probe`와 `git push --force --dry-run origin main`이 모두 deny로 차단됐다. ask 규칙(`git push *`)과 AO 워커 아래 동작은 측정하지 않았다.
@@ -112,7 +112,9 @@
   - `Bash(git clean -f *)`, `Bash(git clean -fd *)`, `Bash(git clean -fdx *)`
   - `Bash(git checkout -- *)`, `Bash(git checkout .)`, `Bash(git restore .)`, `Bash(git restore --staged .)`
   - `Read(**/.credentials*)`, `Read(**/.env*)`, `Read(**/credentials.json)`
-- `hooks.PreToolUse`: matcher `Bash`, command `rtk hook claude`
+- `enableWorkflows: true`, `skipDangerousModePermissionPrompt: true`, `theme: "dark"` (2026-10-10, PR #27: 라이브 설정에만 있던 키를 저장소로 옮김. 저장소가 원본이다).
+- `env`는 머신 전용이다(예: `CLAUDE_CODE_TMPDIR`). 저장소 `settings.json`에는 넣지 않는다. `apply.sh`는 라이브의 `env`를 보존하고 `verify.sh`는 비교에서 제외한다(PR #30).
+- `hooks.PreToolUse`: matcher `Bash`, command 두 개. `rtk hook claude`와 `bash "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/secret-guard.sh"`(PR #31). 두 훅은 병렬로 실행되므로 서로의 출력에 의존하지 않는다.
 
 에이전트 (`claude/agents/`):
 - `reviewer`: model sonnet, effort high, 도구 Read/Grep/Glob/Bash. 다른 에이전트의 작업을 기준에 맞춰 검증한다.
