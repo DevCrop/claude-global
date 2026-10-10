@@ -4,6 +4,7 @@
 # Limit: it reads the command string. Not seen: aliases, scripts that call git, variables, xargs/find -exec, paths with spaces, brace expansion, eval.
 # No timeout of its own: a huge repo can make `git status` slow (set a hook timeout in settings if that bites).
 input="$(cat)"
+case "$input" in *git*) ;; *) exit 0 ;; esac
 command -v jq >/dev/null 2>&1 || { echo "secret-guard: jq not found, check skipped" >&2; exit 0; }
 cmd="$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2>/dev/null)"
 cwd="$(printf '%s' "$input" | jq -r '.cwd // empty' 2>/dev/null)"
@@ -50,7 +51,7 @@ while IFS= read -r seg; do
   broad=0; paths=""; dd=0
   for t in "$@"; do
     # commit: words before -- are message text, not paths (staged files are judged from git instead)
-    [ "$verb" = commit ] && [ "$dd" = 0 ] && case "$t" in --) dd=1; continue ;; -*) ;; *) continue ;; esac
+    [ "$verb" = commit ] && [ "$dd" = 0 ] && case "$t" in --) dd=1; continue ;; -*) ;; *) broad=1; continue ;; esac
     case "$t" in
       --all|--update|--force|--pathspec-from-file*) broad=1 ;;
       -*) case "$verb" in
@@ -67,7 +68,10 @@ while IFS= read -r seg; do
     commit)
       judge "$(git -C "$dir" diff --cached --name-only 2>/dev/null)"
       [ "$broad" = 1 ] && judge "$(git -C "$dir" diff --name-only 2>/dev/null)" ;;
-    push) judge "$(git -C "$dir" ls-files 2>/dev/null)" ;;
+    push) # outgoing changes only; without an upstream, all tracked files
+      out="$(git -C "$dir" diff --name-only '@{u}...HEAD' 2>/dev/null)" || out=""
+      git -C "$dir" rev-parse '@{u}' >/dev/null 2>&1 || out="$(git -C "$dir" ls-files 2>/dev/null)"
+      judge "$out" ;;
   esac
 done <<< "$segs"
 

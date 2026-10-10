@@ -64,6 +64,19 @@ run 0 'git add b.txt'
 git add -f .credentials.json 2>/dev/null
 run 2 'git commit -m x'
 run 2 'git push origin main'
+# with an upstream, a tracked-but-already-pushed secret does not block unrelated pushes
+git init -q --bare "$t/o.git" 2>/dev/null; git remote add origin "$t/o.git" 2>/dev/null; git branch -M main; git rm -q --cached .credentials.json; git commit -qm rm2; git add -f .credentials.json; git commit -qm addsecret; git push -q -u origin main 2>/dev/null; echo z > z.txt; git add z.txt; git commit -qm z
+run 0 'git push'
+git add -f k.pem; git commit -qm pem
+run 2 'git push'
+git reset -q --hard HEAD~1 2>/dev/null
+echo w >> z.txt; git add -f .credentials.json 2>/dev/null; git commit -qam w2 2>/dev/null
+
 git rm -q --cached .credentials.json
+git add -f .env.production 2>/dev/null; git commit -qm env; echo changed >> .env.production
+run 2 'git commit .env.production'
+run 2 'git commit -m x .env.production'
+run 2 'git commit -m "never add .env"'
+git rm -q --cached .env.production; git commit -qm rm
 run 0 'git commit -m x'
 echo "failures: $fail"; [ "$fail" = 0 ]
