@@ -96,6 +96,14 @@ details.fold[open] summary { margin-bottom: var(--s2); }
 .cards { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
 .card { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--bg); padding: var(--s3); display: grid; gap: 4px; align-content: start; }
 .card b { font-size: var(--t-sm); } .card p { margin: 0; font-family: var(--serif); font-size: var(--t-sm); color: var(--muted); line-height: 1.55; }
+.svgi { flex: none; vertical-align: -3px; }
+.card .ch { display: flex; align-items: center; gap: 8px; color: var(--accent); }
+.card .ch b { color: var(--fg); }
+.card { transition: border-color .15s, box-shadow .15s; } .card:hover { border-color: var(--accent); box-shadow: 0 1px 6px rgba(0,0,0,.06); }
+.ck .i-ok, .ck .i-bad, .ck .i-warn { display: inline-flex; width: 22px; height: 22px; align-items: center; justify-content: center; border-radius: 50%; }
+.ck .i-ok { background: rgba(120,140,93,.18); } .ck .i-bad { background: rgba(190,70,60,.15); } .ck .i-warn { background: rgba(217,160,60,.18); }
+.erow .ico, .side button .ic { display: inline-flex; align-items: center; justify-content: center; }
+.dia .fl { font-style: italic; }
 .dia { overflow-x: auto; }
 .dia svg { display: block; width: 100%; height: auto; min-width: 760px; }
 .dia text { font-family: var(--sans); font-size: 12px; fill: var(--fg); }
@@ -590,6 +598,20 @@ dialog pre .l-FAIL { color: var(--bad); font-weight: 700; } dialog pre .l-WARN {
   const row = (...k) => { const r = el("div", "flowrow"); r.append(...k); return r; };
   const vrow = (...k) => { const r = el("div", "flowrow v"); r.append(...k); return r; };
   const par = (...k) => { const p = el("div", "par"); p.append(...k); return p; };
+  const IP = {
+    activity: "M22 12h-4l-3 9L9 3l-3 9H2", alert: "M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z M12 9v4 M12 17h.01",
+    flow: "M6 3v12 M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M18 9a9 9 0 0 1-9 9",
+    route: "M16 3h5v5 M4 20 21 3 M21 16v5h-5 M15 15l6 6 M4 4l5 5", list: "M8 6h13 M8 12h13 M8 18h13 M3 6h.01 M3 12h.01 M3 18h.01",
+    check: "M20 6 9 17l-5-5", checkc: "M22 11.1V12a10 10 0 1 1-5.9-9.1 M22 4 12 14l-3-3", x: "M18 6 6 18 M6 6l12 12",
+    folder: "M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z", bot: "M12 8V4H8 M4 8h16v12H4z M2 14h2 M20 14h2 M15 13v2 M9 13v2",
+    star: "M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6.1L12 16.6 6.6 19.6l1.2-6.1L3.3 9.3l6.1-.7z", term: "M4 17l6-6-6-6 M12 19h8",
+    shield: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z", user: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
+    lock: "M5 11h14v10H5z M8 11V7a4 4 0 0 1 8 0v4", dot: "M12 12h.01",
+    bulb: "M9 18h6 M10 22h4 M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"
+  };
+  const ico = (name, size, color) => { const e = sv("svg", { viewBox: "0 0 24 24", width: size || 16, height: size || 16, fill: "none", stroke: color || "currentColor", "stroke-width": 1.8, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true", class: "svgi" }); e.append(sv("path", { d: IP[name] || IP.dot })); return e; };
+  (function navIcons() { const M = { monitor: "activity", dbg: "alert", orch: "flow", route: "route", feat: "list", prac: "checkc", setup: "folder" };
+    document.querySelectorAll(".side button[data-tab]").forEach((b) => { const i = b.querySelector(".ic"); if (i) i.replaceChildren(ico(M[b.dataset.tab] || "dot", 17)); }); })();
   const SN = (tag, attrs, text) => { const e = sv(tag, attrs || {}); if (text != null) e.textContent = text; return e; };
   const diagram = (svg) => { const d = el("div", "dia"); d.append(svg); return d; };
   function defs(svg) {
@@ -684,17 +706,19 @@ dialog pre .l-FAIL { color: var(--bad); font-weight: 700; } dialog pre .l-WARN {
     const put = (name, model, eff) => { const k = /opus/i.test(model) ? 0 : /sonnet/i.test(model) ? 1 : /haiku/i.test(model) ? 2 : 3; tiers[k][2].push([name, eff]); };
     put("advisor", r.advisor || "?", "검토·조언");
     r.agents.forEach((a) => put(a.name, a.model, a.effort));
-    const shown = tiers.filter((t) => t[2].length), W = 980, CW = 128, per = 4, X = 330;
+    const shown = tiers.filter((t) => t[2].length), W = 980, CW = 128, per = 4, X = 384;
     let y = 16; const rows = shown.map((t) => { const h = 46 + Math.ceil(t[2].length / per) * 50; const o = { t: t, y: y, h: h }; y += h + 14; return o; });
     const H = Math.max(y, 190);
     const svg = sv("svg", { viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": "모델 라우팅 컴포넌트 다이어그램" });
     defs(svg);
     svg.append(SN("rect", { x: 14, y: H / 2 - 98, width: 120, height: 56, rx: 10, class: "box" }));
-    svg.append(SN("text", { x: 74, y: H / 2 - 66, "text-anchor": "middle", "font-weight": 600 }, "요청"));
+    svg.append(SN("text", { x: 74, y: H / 2 - 74, "text-anchor": "middle", class: "sub" }, "«actor»"));
+    svg.append(SN("text", { x: 74, y: H / 2 - 56, "text-anchor": "middle", "font-weight": 600 }, "요청"));
     svg.append(SN("rect", { x: 160, y: H / 2 - 40, width: 150, height: 80, rx: 12, class: "box m" }));
-    svg.append(SN("text", { x: 235, y: H / 2 - 12, "text-anchor": "middle", "font-weight": 600 }, "메인 대화"));
-    svg.append(SN("text", { x: 235, y: H / 2 + 6, "text-anchor": "middle", class: "sub" }, (r.main || "?") + " · " + (r.effort || "?")));
-    svg.append(SN("text", { x: 235, y: H / 2 + 24, "text-anchor": "middle", class: "sub" }, "위임 여부를 먼저 판단"));
+    svg.append(SN("text", { x: 235, y: H / 2 - 24, "text-anchor": "middle", class: "sub" }, "«orchestrator»"));
+    svg.append(SN("text", { x: 235, y: H / 2 - 8, "text-anchor": "middle", "font-weight": 600 }, "메인 대화"));
+    svg.append(SN("text", { x: 235, y: H / 2 + 9, "text-anchor": "middle", class: "sub" }, (r.main || "?") + " · " + (r.effort || "?")));
+    svg.append(SN("text", { x: 235, y: H / 2 + 26, "text-anchor": "middle", class: "sub" }, "위임 여부를 먼저 판단"));
     svg.append(SN("line", { x1: 134, y1: H / 2 - 70, x2: 200, y2: H / 2 - 42, class: "edge", "marker-end": "url(#ah-edge)" }));
     rows.forEach((row) => {
       const cls = "tier t-" + row.t[0];
@@ -704,10 +728,12 @@ dialog pre .l-FAIL { color: var(--bad); font-weight: 700; } dialog pre .l-WARN {
       row.t[2].forEach((c, i) => {
         const cx = X + 14 + (i % per) * (CW + 10), cy = row.y + 36 + Math.floor(i / per) * 50;
         svg.append(SN("rect", { x: cx, y: cy, width: CW, height: 42, rx: 8, class: "box" + (c[0] === "advisor" ? " a" : "") }));
-        svg.append(SN("text", { x: cx + CW / 2, y: cy + 18, "text-anchor": "middle", "font-weight": 600 }, c[0]));
+        const g = SN("g", { transform: "translate(" + (cx + 8) + "," + (cy + 6) + ")", style: "color:var(--faint)" }); g.append(ico(c[0] === "advisor" ? "bulb" : "bot", 14)); svg.append(g);
+        svg.append(SN("text", { x: cx + CW / 2 + 6, y: cy + 18, "text-anchor": "middle", "font-weight": 600 }, c[0]));
         svg.append(SN("text", { x: cx + CW / 2, y: cy + 33, "text-anchor": "middle", class: "sub" }, c[1] ? "effort " + c[1] : ""));
       });
-      svg.append(SN("path", { d: "M310 " + (H / 2) + " C340 " + (H / 2) + " 320 " + (row.y + row.h / 2) + " " + (X - 2) + " " + (row.y + row.h / 2), class: row.t[0] === "opus" ? "edge inh" : "edge", "marker-end": "url(#ah-edge)" }));
+      svg.append(SN("path", { d: "M310 " + (H / 2) + " C350 " + (H / 2) + " 340 " + (row.y + row.h / 2) + " " + (X - 2) + " " + (row.y + row.h / 2), class: row.t[0] === "opus" ? "edge inh" : "edge", "marker-end": "url(#ah-edge)" }));
+      svg.append(SN("text", { x: 316, y: row.y + row.h / 2 - 8, class: "fl" }, row.t[0] === "opus" ? "\u00abadvise\u00bb" : "\u00abdelegate\u00bb"));
     });
     return diagram(svg);
   }
@@ -724,14 +750,14 @@ dialog pre .l-FAIL { color: var(--bad); font-weight: 700; } dialog pre .l-WARN {
   function drawFeat(v) {
     const f = inv.features, tiles = el("div", "tiles");
     [["에이전트", f.agents.length, "acc"], ["스킬", f.skills.length, "acc"], ["스크립트", f.scripts.length, ""], ["deny 규칙", f.deny, "warn"], ["ask 규칙", f.ask, ""], ["훅", f.hooks.length, "ok"]].forEach(([l, nn, tone]) => { const c = el("div", "tile " + tone); c.append(el("div", "n", String(nn)), el("div", "l", l)); tiles.append(c); });
-    const cardList = (items) => { const g = el("div", "cards"); items.forEach((it) => { const c = el("div", "card"); c.append(el("b", null, it.name), el("p", null, it.desc || "")); g.append(c); }); return g; };
+    const cardList = (items, ic) => { const g = el("div", "cards"); items.forEach((it) => { const c = el("div", "card"); const h = el("div", "ch"); h.append(ico(ic || "dot", 16), el("b", null, it.name)); c.append(h, el("p", null, it.desc || "")); g.append(c); }); return g; };
     v.replaceChildren(tiles,
       grid2(
         panel("권한 · 훅", "settings.json", kv("기본 모드", bd("accent", f.mode || "?")), ...Object.entries(f.denyKinds).map(([k, nn]) => kv("deny · " + k, nn + "개")), ...f.hooks.map((h) => kv("PreToolUse 훅", h))),
         panel("플러그인 · 기타", "", ...f.plugins.map((p) => kv("플러그인", p)), kv("상태줄", f.statusLine ? "켜짐" : "없음"), kv("대시보드 화면", f.dashboard.join(" · ")))),
-      panel("스킬 " + f.skills.length, "claude/skills/", cardList(f.skills)),
-      panel("에이전트 " + inv.agents.length, "claude/agents/", cardList(inv.agents.map((a) => ({ name: a.name + " · " + a.model, desc: a.desc })))),
-      panel("스크립트 " + f.scripts.length, "scripts/", cardList(f.scripts)),
+      panel("스킬 " + f.skills.length, "claude/skills/", cardList(f.skills, "star")),
+      panel("에이전트 " + inv.agents.length, "claude/agents/", cardList(inv.agents.map((a) => ({ name: a.name + " · " + a.model, desc: a.desc })), "bot")),
+      panel("스크립트 " + f.scripts.length, "scripts/", cardList(f.scripts, "term")),
       panel("일일 루틴 단계 " + f.routine.length, "", ...f.routine.map((t) => kv(t))));
   }
   function ringSvg(ok, total) {
@@ -743,7 +769,7 @@ dialog pre .l-FAIL { color: var(--bad); font-weight: 700; } dialog pre .l-WARN {
   }
   function drawPrac(v) {
     const items = inv.practices, ok = items.filter((i) => i.level === "ok").length, bad = items.filter((i) => i.level === "bad").length;
-    const IC = { ok: "✓", bad: "✕", warn: "!" }, groups = {};
+    const IC = { ok: "check", bad: "x", warn: "alert" }, groups = {};
     items.forEach((i) => { (groups[i.src] = groups[i.src] || []).push(i); });
     const head = el("div", "donut"); const lg = el("div", "legend2");
     lg.append(el("div", null, "충족 " + ok + "개"), el("div", null, "미충족 " + bad + "개"), el("div", "note", "각 항목은 파일에서 바로 계산합니다. 근거는 공식 Claude Code 문서입니다."));
@@ -752,16 +778,16 @@ dialog pre .l-FAIL { color: var(--bad); font-weight: 700; } dialog pre .l-WARN {
     Object.entries(groups).forEach(([src, list]) => {
       const c = el("div", "card"), a = el("a", null, "공식 문서: " + src + " ↗"); a.href = "https://code.claude.com/docs/en/" + src; a.target = "_blank"; a.rel = "noreferrer"; a.style.fontSize = "var(--t-xs)";
       c.append(el("b", null, src), a);
-      list.forEach((i) => { const r = el("div", "ck"); r.append(el("span", "i-" + i.level, IC[i.level] || "?"), el("span", null, i.what), bd(i.level, i.level === "ok" ? "충족" : i.level === "bad" ? "미충족" : "확인"), el("div", "ev", i.evidence)); c.append(r); });
+      list.forEach((i) => { const r = el("div", "ck"); const si = el("span", "i-" + i.level); si.append(ico(IC[i.level] || "dot", 14)); r.append(si, el("span", null, i.what), bd(i.level, i.level === "ok" ? "충족" : i.level === "bad" ? "미충족" : "확인"), el("div", "ev", i.evidence)); c.append(r); });
       cols.append(c);
     });
     v.replaceChildren(panel("권장 기준 대비", items.length + "개 항목", head), cols);
   }
   const KM = {
-    "hook-block": { tone: "warn", ic: "⛔", name: "훅 차단", color: "var(--warn)", mean: "secret-guard 훅이 비밀 파일이 들어가는 git add/commit/push를 막았습니다.", fix: "차단된 파일을 변경에서 빼거나 .gitignore에 넣고 다시 실행하세요. 템플릿이면 이름을 .example로 바꿉니다." },
-    "hook-error": { tone: "bad", ic: "✕", name: "훅 오류", color: "var(--bad)", mean: "훅 스크립트 자체가 실패했습니다(차단 exit 2가 아님).", fix: "bash scripts/qa-hooks.sh 와 verify.sh --live 로 훅 파일과 경로를 확인하세요." },
-    permission: { tone: "warn", ic: "🔒", name: "권한 거부", color: "var(--info)", mean: "deny/ask 규칙이나 권한 모드가 호출을 막았습니다.", fix: "규칙은 claude/settings.json 입니다. 정말 필요하면 사용자 확인 후 PR로 바꿉니다." },
-    "tool-error": { tone: "info", ic: "●", name: "도구 오류", color: "var(--faint)", mean: "명령이 0이 아닌 코드로 끝났거나 파일 없음 같은 일반 실패입니다.", fix: "원문은 세션 로그에 있습니다(대시보드는 본문을 보내지 않음). 같은 오류가 2번이면 멈추고 원인을 보고합니다." }
+    "hook-block": { tone: "warn", ic: "shield", name: "훅 차단", color: "var(--warn)", mean: "secret-guard 훅이 비밀 파일이 들어가는 git add/commit/push를 막았습니다.", fix: "차단된 파일을 변경에서 빼거나 .gitignore에 넣고 다시 실행하세요. 템플릿이면 이름을 .example로 바꿉니다." },
+    "hook-error": { tone: "bad", ic: "x", name: "훅 오류", color: "var(--bad)", mean: "훅 스크립트 자체가 실패했습니다(차단 exit 2가 아님).", fix: "bash scripts/qa-hooks.sh 와 verify.sh --live 로 훅 파일과 경로를 확인하세요." },
+    permission: { tone: "warn", ic: "lock", name: "권한 거부", color: "var(--info)", mean: "deny/ask 규칙이나 권한 모드가 호출을 막았습니다.", fix: "규칙은 claude/settings.json 입니다. 정말 필요하면 사용자 확인 후 PR로 바꿉니다." },
+    "tool-error": { tone: "info", ic: "dot", name: "도구 오류", color: "var(--faint)", mean: "명령이 0이 아닌 코드로 끝났거나 파일 없음 같은 일반 실패입니다.", fix: "원문은 세션 로그에 있습니다(대시보드는 본문을 보내지 않음). 같은 오류가 2번이면 멈추고 원인을 보고합니다." }
   };
   const dbgOpen = new Set(); let dbgFilter = null;
   function donutSvg(counts) {
@@ -804,7 +830,7 @@ dialog pre .l-FAIL { color: var(--bad); font-weight: 700; } dialog pre .l-WARN {
     d.errors.slice().reverse().filter((e) => !dbgFilter || e.kind === dbgFilter).forEach((e, idx) => {
       const m = KM[e.kind] || KM["tool-error"], key = e.at + e.tool + idx, b = el("button", "erow"); b.type = "button"; b.setAttribute("aria-expanded", dbgOpen.has(key));
       const mid = el("span"); mid.append(el("b", null, e.tool + " "), bd(m.tone, m.name), el("span", "muted", e.detail ? "  " + e.detail : ""));
-      const ic = el("span", "ico", m.ic); ic.style.color = m.color; b.append(ic, mid, el("span", "muted", ago(e.at, now)));
+      const ic = el("span", "ico"); ic.append(ico(m.ic, 17)); ic.style.color = m.color; b.append(ic, mid, el("span", "muted", ago(e.at, now)));
       b.onclick = () => { dbgOpen.has(key) ? dbgOpen.delete(key) : dbgOpen.add(key); drawDbg(v); };
       list.append(b);
       if (dbgOpen.has(key)) { const x = el("div", "exp"); x.append(el("p", null, "의미: " + m.mean), el("p", null, "조치: " + m.fix), el("div", "muted", "발생 시각 " + hms(e.at) + (e.detail ? " · 차단된 파일: " + e.detail : ""))); list.append(x); }
