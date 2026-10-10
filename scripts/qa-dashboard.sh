@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Checks the live dashboard server on a random local port: state keys, AO session field allowlist, foreign Host refused.
+# No model calls. Needs python3, curl, jq. Usage: bash scripts/qa-dashboard.sh
+set -u
+repo="$(cd "$(dirname "$0")/.." && pwd)"
+py="$(command -v python3 || command -v python)"
+port=$((20000 + RANDOM % 20000))
+"$py" "$repo/scripts/dashboard/server.py" --port "$port" >/dev/null 2>&1 &
+pid=$!; trap 'kill $pid 2>/dev/null' EXIT
+fail=0; pass() { echo "PASS  $*"; }; bad() { echo "FAIL  $*"; fail=$((fail+1)); }
+for i in $(seq 1 30); do curl -s -o /dev/null "http://127.0.0.1:$port/api/state" && break; sleep 1; done
+s="$(curl -s -m 60 "http://127.0.0.1:$port/api/state")"
+[ -n "$s" ] && printf '%s' "$s" | jq empty 2>/dev/null && pass "/api/state is JSON" || { bad "/api/state is not JSON"; exit 1; }
+for k in ao; do printf '%s' "$s" | jq -e "has(\"$k\")" >/dev/null && pass "state has $k" || bad "state lacks $k"; done
+[ "$(printf '%s' "$s" | jq -r '.ao | has("available")')" = true ] && pass "ao.available present" || bad "ao.available missing"
+# Session objects may carry only these keys (never prompts or review bodies).
+extra="$(printf '%s' "$s" | jq -r '[.ao.sessions[]? | keys[]] | unique - ["id","projectId","role","displayName","status","activity","branch","prs","isTerminated","lastActivityAt","createdAt"] | join(",")')"
+n="$(printf '%s' "$s" | jq '.ao.sessions | length')"
+if [ "$n" = 0 ]; then echo "SKIP  ao.sessions allowlist (no AO sessions right now, so nothing to check)"
+elif [ -z "$extra" ]; then pass "ao.sessions keys are within the allowlist ($n sessions)"; else bad "ao.sessions has extra keys: $extra"; fi
+code="$(curl -s -o /dev/null -w '%{http_code}' -H 'Host: evil.example' "http://127.0.0.1:$port/api/state")"
+[ "$code" = 403 ] && pass "foreign Host refused (403)" || bad "foreign Host got $code"
+code="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$port/")"
+[ "$code" = 200 ] && pass "index served" || bad "index got $code"
+echo "failures: $fail"; [ "$fail" = 0 ]
