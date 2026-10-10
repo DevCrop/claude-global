@@ -32,4 +32,4 @@ Run `bash scripts/qa-deny.sh` on each machine after `apply.sh`. It first checks 
 
 ## Status
 
-Applied on the first machine and verified on a Mac earlier (2026-10-09); the permissions, agents, skills, verify and routine changes after that are untested on Windows Git Bash and macOS. On each machine run the steps in `docs/GUIDE.md` and `bash scripts/verify.sh --live`.
+Applied and checked on the first machine (Windows Git Bash) on 2026-10-10 after PRs #28 to #33: `apply.sh`, then `verify.sh --live` with 0 FAIL, and a real `claude -p` session in `bypassPermissions` with RTK on had `git add -A` blocked by the secret-guard hook. Not yet run on macOS (bash 3.2, BSD tools) or on a second machine. On each machine run the steps in `docs/GUIDE.md` and `bash scripts/verify.sh --live`.
