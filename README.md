@@ -6,7 +6,7 @@ Source of truth for the global Claude Code setup on this machine (`~/.claude`).
 
 - `claude/CLAUDE.md` — global rules, copied to `~/.claude/CLAUDE.md`
 - `claude/settings.json` — global settings, copied to `~/.claude/settings.json`
-- `claude/RTK.md`, `claude/agents/`, `claude/skills/` — RTK note, subagents (`explorer`, `reviewer`, `worker`) and skills (`orchestrate`, `project-setup`), copied to `~/.claude/`
+- `claude/RTK.md`, `claude/agents/`, `claude/skills/` — RTK note, subagents (`explorer`, `reviewer`, `worker`, `publisher`, `frontend`, `backend`, `qa`) and skills (`orchestrate`, `project-setup`, `spec-writing`, `design-spec`, `ui-baseline`), copied to `~/.claude/`
 - `claude/routines/`, `claude/scheduled-tasks/` — daily update routine and the scheduled task body
 - `docs/GUIDE.md` — setup order for a machine and for a project, and the per-task flow
 - `docs/NEXT-MACHINE.md` — full handoff: decisions, links, routine, remaining work, setup order for a new machine
@@ -20,7 +20,7 @@ Runtime data (credentials, session history, auto-memory, plugins, caches) is nev
 
 ## Applying
 
-Run `bash scripts/apply.sh` (macOS bash or Git Bash on Windows). On Windows, Git Bash `$HOME` must equal `%USERPROFILE%`; otherwise set `CLAUDE_CONFIG_DIR` to `%USERPROFILE%\.claude`. It backs up the managed files, then copies `CLAUDE.md`, `RTK.md`, `settings.json`, `agents/` and `routines/` into `~/.claude/` (or `CLAUDE_CONFIG_DIR`). Nothing else in that directory is touched. Update with `git pull && bash scripts/apply.sh`. The status line in `settings.json` needs `jq` on PATH.
+Run `bash scripts/apply.sh` (macOS bash or Git Bash on Windows). On Windows, Git Bash `$HOME` must equal `%USERPROFILE%`; otherwise set `CLAUDE_CONFIG_DIR` to `%USERPROFILE%\.claude`. It backs up the managed files, then copies `CLAUDE.md`, `RTK.md`, `settings.json`, `agents/`, `routines/` and the listed `skills/*` into `~/.claude/` (or `CLAUDE_CONFIG_DIR`). Nothing else in that directory is touched. Update with `git pull && bash scripts/apply.sh`. The status line in `settings.json` needs `jq` on PATH.
 
 Scope: local machines only. Cloud sessions read the project's own `.claude/`, not `~/.claude/`.
 

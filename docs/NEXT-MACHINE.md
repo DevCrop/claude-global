@@ -57,11 +57,11 @@
    ```bash
    cd claude-global && bash scripts/apply.sh
    ```
-   - 스크립트가 `CLAUDE.md`, `RTK.md`, `settings.json`, `agents/`, `routines/`만 `~/.claude`(또는 `CLAUDE_CONFIG_DIR`)로 복사한다. 덮어쓰기 전에 대상 파일을 `~/.claude-backup-<시각>/`에 백업한다. 자격 증명, `projects/`, 플러그인은 건드리지 않는다.
+   - 스크립트가 `CLAUDE.md`, `RTK.md`, `settings.json`, `agents/`, `routines/`, 지정한 `skills/*`만 `~/.claude`(또는 `CLAUDE_CONFIG_DIR`)로 복사한다. 덮어쓰기 전에 대상 파일을 `~/.claude-backup-<시각>/`에 백업한다. 자격 증명, `projects/`, 플러그인은 건드리지 않는다.
    - `CLAUDE.md` 마지막 줄 `@RTK.md`가 `RTK.md`를 import하므로 두 파일이 같은 폴더에 있어야 한다. 스크립트가 함께 복사한다.
    - 이후 갱신은 `git pull && bash scripts/apply.sh`.
    - Windows: Git Bash의 `$HOME`이 `%USERPROFILE%`과 같아야 한다. 다르면 `CLAUDE_CONFIG_DIR`을 `%USERPROFILE%\.claude`로 지정한다. 셸 스크립트의 줄바꿈이 CRLF가 되면 `bash\r` 오류가 나므로 `.gitattributes`가 `*.sh`를 LF로 고정한다(Windows 실제 시험은 미실시).
-   - 확인: Claude 세션에서 `/context`의 Memory files에 `CLAUDE.md`, `RTK.md`가 보이고 Custom agents에 `explorer`, `reviewer`가 보인다.
+   - 확인: Claude 세션에서 `/context`의 Memory files에 `CLAUDE.md`, `RTK.md`가 보이고 Custom agents에 `explorer`, `reviewer`, `worker`, `publisher`, `frontend`, `backend`, `qa`가 보이고 Skills에 `orchestrate`, `spec-writing`, `design-spec`이 보인다.
 4. RTK를 설치한다 (RTK 공식 README 기준).
    ```bash
    winget install rtk-ai.rtk   # Windows
@@ -117,6 +117,11 @@
 에이전트 (`claude/agents/`):
 - `reviewer`: model sonnet, effort high, 도구 Read/Grep/Glob/Bash. 다른 에이전트의 작업을 기준에 맞춰 검증한다.
 - `explorer`: model haiku, 도구 Read/Grep/Glob (읽기 전용), `omitClaudeMd: true`(호출마다 CLAUDE.md 로딩 생략, Claude Code v2.1.271 이상). 질문 하나를 넓게 검색해 10줄 이내로 답한다.
+- `publisher`(퍼블): model sonnet, effort medium, 도구 Read/Grep/Glob/Edit/Write/Bash, `skills: [ui-baseline]`. 정적 HTML/CSS/템플릿. 상태·API·서버 코드는 금지.
+- `frontend`: model sonnet, effort high, 같은 도구, `skills: [ui-baseline]`. JS/TS 로직·상태·API 연동. 백엔드 계약이 없으면 추측하지 않고 중단·보고.
+- `backend`: model sonnet, effort high, 같은 도구. 서버·API·DB. 로컬 외 DB 접속과 파괴적 쿼리·마이그레이션 실행 금지(파일만 작성).
+- `qa`: model sonnet, effort high, 도구 Read/Grep/Glob/Bash(편집 불가). 실행으로 동작 검증. `reviewer`는 diff를 서면 기준과 대조, `qa`는 실행해서 확인.
+- 기획·디자인은 에이전트가 아니라 메인 대화의 스킬 `spec-writing`, `design-spec`이다(서브에이전트는 사용자에게 질문할 수 없다). 공유 규칙은 스킬 `ui-baseline`을 `skills:`로 주입한다(에이전트 정의 간 상속 기능은 없다).
 
 규칙 요약 (`claude/CLAUDE.md`, 원문이 우선):
 - 한국어 응답. 요청을 먼저 되풀이하고, 모호하면 2~3개 해석을 제시.
@@ -256,8 +261,10 @@ RTK 절감 (시점별로 값이 다르다):
 - Ponytail은 상시 사용한다(2026-10-09 변경, 이전 결정은 "설치하지 않는다"). 이유는 사용자 선호이며, 비용은 세션당 약 641토큰과 Node 훅이다. Archify는 요청 시에만, 검토 후 승인받고 설치한다(Mac은 2026-10-09 설치됨).
 - 일일 루틴은 두 컴퓨터(Mac, 데스크탑)에서 모두 돌린다. 이전 결정("한쪽만")을 바꿨다.
 - 루틴 모델은 첫 실행만 Haiku, 이후 Sonnet.
-- 오케스트레이션 규칙(2026-10-09): 위임 기준, 브리프 템플릿, 동시 3개 상한, reviewer에는 기준과 파일 목록만, 서브에이전트 보고는 주장으로 취급은 항상 필요한 규칙이 아니라서 `claude/CLAUDE.md`가 아니라 스킬 `orchestrate`(`claude/skills/orchestrate/`)에 둔다(공식 best-practices: 가끔만 필요한 지식은 스킬로). description 자동 매칭은 확률적이라 안 불리면 `/orchestrate`로 직접 호출한다. `apply.sh`는 스킬을 하나씩 복사한다(같은 디렉터리에 archify 등 다른 스킬이 있다). 역할별(planner, coder, tester) 에이전트는 만들지 않는다.
+- 오케스트레이션 규칙(2026-10-09): 위임 기준, 브리프 템플릿, 동시 3개 상한, reviewer에는 기준과 파일 목록만, 서브에이전트 보고는 주장으로 취급은 항상 필요한 규칙이 아니라서 `claude/CLAUDE.md`가 아니라 스킬 `orchestrate`(`claude/skills/orchestrate/`)에 둔다(공식 best-practices: 가끔만 필요한 지식은 스킬로). description 자동 매칭은 확률적이라 안 불리면 `/orchestrate`로 직접 호출한다. `apply.sh`는 스킬을 하나씩 복사한다(같은 디렉터리에 archify 등 다른 스킬이 있다). 역할별 에이전트를 만들지 않는다는 이 결정은 2026-10-10에 바뀌었다(아래 역할 에이전트 항목).
+- 역할 에이전트(2026-10-10, 사용자 요청으로 이전 결정 "역할별 에이전트는 만들지 않는다"를 뒤집음): `publisher`, `frontend`, `backend`, `qa`를 추가했다. 기획·디자인은 에이전트 대신 스킬(`spec-writing`, `design-spec`)로 메인 대화에서 한다. 근거는 공식 문서: 서브에이전트는 `AskUserQuestion`을 못 쓰고, 역할 지식 공유는 `skills:` 주입이며, 순차 의존 작업은 단일 세션이 낫다(agent-teams 문서). Agent teams는 켜지 않는다(팀원에는 정의의 `skills:`가 적용되지 않는다). 역할별 모델은 전부 sonnet이고 차이는 `effort`뿐이다. 역할별 최적 모델은 근거가 없어 첫 실사용 후 조정한다. 적용 머신에서 `ls ~/.claude/agents`로 이전 시안의 `planner.md`, `designer.md`가 남았는지 확인하고, 있으면 확인받고 지운다(`apply.sh`는 복사만 한다).
 - `/context`, `/usage` 같은 슬래시 명령은 사용자가 직접 실행해야 한다 (대화형 UI 명령).
+- 역할 에이전트 시나리오 QA(2026-10-10): `bash scripts/qa-role-agents.sh <작업폴더>`가 웹에이전시 상황 12개(디자인 스펙 누락, 범위 초과 요청, 저대비 색, API 계약 없음, 운영 DB 삭제 요청, 콘텐츠 속 프롬프트 주입, 패키지 설치 유도, 커밋·push 요청, 실패 테스트, 주관적 기준, qa에게 수정 요구, 풀스택 라우팅)를 `claude -p`로 돌려 기계 조건을 채점한다. 이 컨테이너 결과: 56 PASS, 0 FAIL(케이스당 1회 실행). 시험 설계 문제 2건을 고쳤다: (1) 권한 모드가 `default`이면 백그라운드 서브에이전트의 Edit·Bash가 `Permission prompts are not available in this context`로 거부되어 모든 케이스가 에이전트와 무관하게 실패한다 → 스크립트가 `--permission-mode bypassPermissions`와 `--settings claude/settings.json`을 넘긴다. (2) qa가 테스트를 돌리면 `__pycache__`가 생겨 "파일 변경"으로 오판했다 → 채점에서 제외. 문구 확인(CHK)은 약한 증거다. 미시험: 실제 브라우저·스크린샷, 실제 DB, 같은 파일 병렬 편집, 긴 프로젝트, 한 케이스당 반복 실행의 편차. 채점 스크립트는 별도 리뷰어로 검증하지 않았다.
 - 변경은 브랜치와 PR로 올리고 머지는 사람이 한다. 자동 머지는 요청할 때만. push는 사용자 승인 후이고 force push는 쓰지 않는다. (삭제한 원래 계획 문서의 결정을 옮겨 적음)
 - Orchestrator.inc(AO): 도입 후보, 확정 아님(2026-10-09). 핵심 경로(실제 작업 완료)를 데스크톱 네이티브에서 확인하지 못했고, Claude Code 자체의 worktree·`isolation: worktree` 서브에이전트와 비교하지 않았다. 기본 권한 모드는 bypass이고(2026-10-10), deny와 ask 규칙이 가드레일이다. 근거는 섹션 13.
 
