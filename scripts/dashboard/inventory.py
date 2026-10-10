@@ -40,7 +40,7 @@ def agents(root):
     for f in sorted((root / "claude" / "agents").glob("*.md")):
         m = _fm(_read(f))
         out.append({"name": m.get("name", f.stem), "model": m.get("model", "(상속)"), "effort": m.get("effort", "(상속)"),
-                    "tools": m.get("tools", "(전체)"), "skills": m.get("skills", ""), "desc": m.get("description", "")[:160],
+                    "tools": m.get("tools", "(전체)"), "skills": m.get("skills", ""), "desc": m.get("description", "")[:600],
                     "badKeys": sorted(set(m) - AGENT_KEYS)})
     return out
 
@@ -61,7 +61,7 @@ def orchestration(root):
         if l.startswith("## "):
             on = l.strip() == "## Orchestration"
         elif on and l.strip().startswith("- "):
-            sec.append(l.strip()[2:][:260])
+            sec.append(l.strip()[2:][:500])
     return {"default": first[:300], "rules": rules, "routes": routes, "global": sec,
             "format": ["위임 브리프: Task(한 문장) · Files(경로·스펙·API 계약) · Return format · Done criteria(명령으로 확인 가능)",
                        "동시 위임 최대 3개, 같은 파일을 두 에이전트가 수정하지 않는다",
@@ -87,12 +87,12 @@ def features(root):
     skills = []
     for d in sorted((root / "claude" / "skills").glob("*/SKILL.md")):
         m = _fm(_read(d))
-        skills.append({"name": m.get("name", d.parent.name), "desc": m.get("description", "")[:140]})
+        skills.append({"name": m.get("name", d.parent.name), "desc": m.get("description", "")[:600]})
     scripts = []
     for f in sorted((root / "scripts").glob("*.sh")):
         head = [l[1:].strip() for l in _read(f).split("\n")[1:6] if l.startswith("#")]
-        scripts.append({"name": f.name, "desc": (head[0] if head else "")[:140]})
-    routine = [re.sub(r"\s+", " ", l)[:120] for l in _read(root / "claude" / "routines" / "daily-update.md").split("\n") if re.match(r"^\d+[a-z]?\.\s", l)]
+        scripts.append({"name": f.name, "desc": (head[0] if head else "")[:600]})
+    routine = [re.sub(r"\s+", " ", l)[:300] for l in _read(root / "claude" / "routines" / "daily-update.md").split("\n") if re.match(r"^\d+[a-z]?\.\s", l)]
     deny = p.get("deny", [])
     cat = {"파괴적 rm": len([r for r in deny if "rm -" in r]), "force push": len([r for r in deny if "push" in r]),
            "reset/clean/checkout/restore": len([r for r in deny if re.search(r"reset|clean|checkout|restore", r)]),
