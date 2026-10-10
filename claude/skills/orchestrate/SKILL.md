@@ -1,13 +1,26 @@
 ---
 name: orchestrate
-description: Use when splitting work across subagents or parallel agents, before delegating to explorer, worker or reviewer, or when deciding whether to delegate at all.
+description: Use when splitting work across subagents or parallel agents, before delegating to a role agent (publisher, frontend, backend, qa), explorer, worker or reviewer, or when deciding whether to delegate at all.
 ---
 
 Default to one agent. Delegate only when the part does not block the main thread's next step, or its output is large and mostly irrelevant to it. Otherwise work inline.
 
-1. Split by context boundary (a feature with its tests), not by role (planner, coder, tester).
-2. A delegate does not see this conversation. Brief it with: Task (one sentence), Files (paths it needs), Return format (what, how long), Done criteria (checkable by a command or a file read), Out of scope.
-3. At most 3 delegates at once. Each owns one unit: a feature with its tests (`worker`), one search question (`explorer`), or one verification (`reviewer`).
-4. Give the reviewer the criteria and the changed file list only, never the author's reasoning or a verdict to confirm.
-5. A delegate's report is a claim. Check the evidence it cites before relaying it as done.
-6. High-volume, well-defined subagent tasks run on Haiku.
+1. Split by context and file ownership, not by job title. Roles that depend on each other in sequence and need the user (기획, 디자인) stay in the main thread: skills `spec-writing`, then `design-spec`. Delegate only parts that own different files.
+2. Route by what the part touches:
+
+   | Part | Agent |
+   |---|---|
+   | Static markup, CSS, templates | `publisher` |
+   | Client logic, state, API calls | `frontend` |
+   | Server code, API, database | `backend` |
+   | Run it and check behavior | `qa` |
+   | Diff against written criteria | `reviewer` |
+   | One search question | `explorer` |
+   | A change no role above fits | `worker` |
+
+3. Usual order: spec, design, then `backend` and `publisher` together, then `frontend` (it needs the backend's API contract from its Open issues), then `qa`, then `reviewer`.
+4. A delegate does not see this conversation. Brief it with: Task (one sentence), Files (paths it needs, the spec and design paths, the API contract), Return format, Done criteria (checkable by a command or a file read), Out of scope.
+5. At most 3 delegates at once, and no two may edit the same file. Each owns one unit: a feature slice with its tests, one search question, or one verification.
+6. Give `qa` and `reviewer` the criteria and the changed file list only, never the author's reasoning or a verdict to confirm.
+7. A delegate's report is a claim. Check the evidence it cites before relaying it as done.
+8. High-volume, well-defined subagent tasks run on Haiku.
