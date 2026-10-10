@@ -43,11 +43,13 @@ run 2 '(git add -A)'
 run 2 'bash -c "git add -A"'
 run 2 'git add $(echo .env)'
 run 2 'git add *.pem'
+run 2 'git add :/'
 mkdir "$t/clean"; (cd "$t/clean" && git init -q . && echo y > c.txt)
 CWD="$t/clean" run 2 "cd $r && git add -A"
 CWD="$t/clean" run 0 'git add -A'
 TMPDIR=/nonexistent run 2 'git add -A'
 # allow (exit 0)
+run 0 'git commit -m "docs: never git add .env"'
 run 0 'git add id_rsa.pub'
 run 0 'git add .env.production.example'
 run 0 'git add ok.txt'

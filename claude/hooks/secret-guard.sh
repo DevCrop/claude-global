@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # PreToolUse hook (Bash): block git add/stage/commit/push when a secret-looking file would be staged, committed or pushed.
 # Blocks with exit 2 + stderr (https://code.claude.com/docs/en/hooks). Internal errors fail open with a warning.
-# Limit: it reads the command string, so aliases, scripts that call git, variables and eval are not seen.
+# Limit: it reads the command string. Not seen: aliases, scripts that call git, variables, xargs/find -exec, paths with spaces, brace expansion, eval.
+# No timeout of its own: a huge repo can make `git status` slow (set a hook timeout in settings if that bites).
 input="$(cat)"
 command -v jq >/dev/null 2>&1 || { echo "secret-guard: jq not found, check skipped" >&2; exit 0; }
 cmd="$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2>/dev/null)"
@@ -46,15 +47,17 @@ while IFS= read -r seg; do
   verb="${1:-}"; [ "$#" -gt 0 ] && shift
   case "$verb" in add|stage|commit|push) ;; *) continue ;; esac
   git -C "$dir" rev-parse --git-dir >/dev/null 2>&1 || continue
-  broad=0; paths=""
+  broad=0; paths=""; dd=0
   for t in "$@"; do
+    # commit: words before -- are message text, not paths (staged files are judged from git instead)
+    [ "$verb" = commit ] && [ "$dd" = 0 ] && case "$t" in --) dd=1; continue ;; -*) ;; *) continue ;; esac
     case "$t" in
       --all|--update|--force|--pathspec-from-file*) broad=1 ;;
       -*) case "$verb" in
             add|stage) printf '%s' "$t" | grep -Eq '^-[a-zA-Z]*[Aufp][a-zA-Z]*$' && broad=1 ;;
             commit) printf '%s' "$t" | grep -Eq '^-[a-zA-Z]*a[a-zA-Z]*$' && broad=1 ;;
           esac ;;
-      .|./|*[\*\?\[]*) broad=1 ;;
+      .|./|:/|:/*|*[\*\?\[]*) broad=1 ;;
       *) paths="$paths $t"; [ -d "$dir/$t" ] && broad=1 ;;
     esac
   done
