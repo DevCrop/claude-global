@@ -23,6 +23,11 @@ for k in orchestration routing features practices debug agents; do printf '%s' "
 ek="$(printf '%s' "$iv" | jq -r '[.debug.errors[]? | keys[]] | unique - ["at","tool","kind","detail"] | join(",")')"
 [ -z "$ek" ] && pass "debug.errors carry only at/tool/kind/detail (no tool-result text)" || bad "debug.errors has extra keys: $ek"
 [ "$(printf '%s' "$iv" | jq '[.practices[] | select(.level != "ok" and .level != "bad" and .level != "warn")] | length')" = 0 ] && pass "practices levels are ok/bad/warn" || bad "practices has an unknown level"
+# regression: a secret-guard block followed by more tool calls must not crash debug()
+lg="$(mktemp)"; printf '%s
+' '{"timestamp":"t1","message":{"content":[{"type":"tool_use","id":"a","name":"Bash"}]}}' '{"timestamp":"t2","message":{"content":[{"type":"tool_result","tool_use_id":"a","is_error":true,"content":"secret-guard: blocked. Secret-looking files would be included: .env.production"}]}}' '{"timestamp":"t3","message":{"content":[{"type":"tool_use","id":"b","name":"Read"},{"type":"tool_result","tool_use_id":"b","is_error":true,"content":"boom"}]}}' > "$lg"
+r="$("$py" -c "import sys,json;sys.path.insert(0,sys.argv[1]);import inventory;d=inventory.debug(sys.argv[2]);print(json.dumps([e['kind']+':'+e['detail'] for e in d['errors']]))" "$repo/scripts/dashboard" "$lg" 2>&1)"; rm -f "$lg"
+[ "$r" = '["hook-block:.env.production", "tool-error:"]' ] && pass "debug() survives a hook block followed by more tool calls" || bad "debug() regression: $r"
 code="$(curl -s -o /dev/null -w '%{http_code}' -H 'Host: evil.example' "http://127.0.0.1:$port/api/state")"
 [ "$code" = 403 ] && pass "foreign Host refused (403)" || bad "foreign Host got $code"
 code="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$port/")"
