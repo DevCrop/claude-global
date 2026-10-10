@@ -64,7 +64,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .ph .hint { font-size: var(--t-xs); color: var(--faint); white-space: nowrap; }
 
 /* KPI strip */
-.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s3); }
+.kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--s3); }
 @media (max-width: 860px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .kpi { padding: var(--s3) var(--s4); gap: 4px; }
 .kpi .k { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); font-size: var(--t-xs); color: var(--muted); }
@@ -121,6 +121,11 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .pr .d { font-size: var(--t-xs); color: var(--faint); white-space: nowrap; }
 .add { color: var(--ok); } .del { color: var(--bad); }
 .chk { grid-template-columns: 64px minmax(0, 1fr); }
+.aw { grid-template-columns: 76px minmax(0, 1fr) auto; }
+.aw .badge { justify-self: start; }
+.aw .t b { font-weight: 600; margin-right: 6px; }
+.aw .chips { display: inline-flex; gap: 4px; }
+.aw.gone .t { color: var(--faint); }
 .chk .badge { justify-self: start; }
 .empty { color: var(--faint); font-size: var(--t-sm); padding: var(--s2) 0; }
 @media (min-width: 1100px) and (max-height: 900px) { #perDay { display: none; } }
@@ -185,6 +190,10 @@ dialog pre .l-FAIL { color: var(--bad); font-weight: 700; } dialog pre .l-WARN {
         <div class="ph"><h2>실시간 이벤트</h2><span class="hint">최근 8건</span></div>
         <div class="rows" id="stream"></div>
       </div>
+      <div class="panel">
+        <div class="ph"><h2>AO 워커</h2><span class="hint" id="aoNote"></span></div>
+        <div class="rows" id="aoRows"></div>
+      </div>
     </div>
     <div class="col">
       <div class="panel">
@@ -209,7 +218,7 @@ dialog pre .l-FAIL { color: var(--bad); font-weight: 700; } dialog pre .l-WARN {
 
 <dialog id="dlg">
   <div class="dh"><h2>전체 로그</h2><button class="btn" id="dlgClose" type="button">닫기</button></div>
-  <div class="tabs"><button class="btn" id="tabV" type="button" aria-pressed="true">verify --live</button><button class="btn" id="tabR" type="button" aria-pressed="false">루틴 보고서</button></div>
+  <div class="tabs"><button class="btn" id="tabV" type="button" aria-pressed="true">verify --live</button><button class="btn" id="tabR" type="button" aria-pressed="false">루틴 보고서</button><button class="btn" id="tabA" type="button" aria-pressed="false">AO 세션</button></div>
   <pre id="dlgPre" tabindex="0"></pre>
 </dialog>
 
@@ -265,11 +274,12 @@ dialog pre .l-FAIL { color: var(--bad); font-weight: 700; } dialog pre .l-WARN {
     });
     $("projRows").replaceChildren(...(list.length ? [head, ...nodes] : []));
   }
-  $("tabV").onclick = () => { tab = "v"; fillDlg(); }; $("tabR").onclick = () => { tab = "r"; fillDlg(); };
+  $("tabV").onclick = () => { tab = "v"; fillDlg(); }; $("tabR").onclick = () => { tab = "r"; fillDlg(); }; $("tabA").onclick = () => { tab = "a"; fillDlg(); };
   function fillDlg() {
-    $("tabV").setAttribute("aria-pressed", tab === "v"); $("tabR").setAttribute("aria-pressed", tab === "r");
+    $("tabV").setAttribute("aria-pressed", tab === "v"); $("tabR").setAttribute("aria-pressed", tab === "r"); $("tabA").setAttribute("aria-pressed", tab === "a");
     const pre = $("dlgPre"); if (!last) { pre.textContent = "데이터를 기다리는 중"; return; }
     if (tab === "v") pre.replaceChildren(...last.verify.lines.flatMap((l) => [el("span", "l-" + l.split(" ")[0], l), document.createTextNode("\n")]));
+    else if (tab === "a") pre.textContent = aoText(last);
     else pre.textContent = (last.reports[0] || {}).text || "보고서가 아직 없습니다.";
   }
 
@@ -330,6 +340,14 @@ dialog pre .l-FAIL { color: var(--bad); font-weight: 700; } dialog pre .l-WARN {
     return null;
   }
 
+  const AOACT = { active: ["info", "ACTIVE"], idle: ["ok", "IDLE"], blocked: ["bad", "BLOCKED"], exited: ["", "EXITED"] };
+  const VERD = { approved: ["ok", "APPROVED"], changes_requested: ["bad", "CHANGES"] };
+  function aoText(s) {
+    const a = s.ao || {}; if (!a.available) return "ao CLI를 찾지 못했습니다 (AO_BIN으로 경로를 지정할 수 있습니다).";
+    const head = "daemon " + ((a.daemon || {}).state || "?") + " · port " + ((a.daemon || {}).port || "?") + " · uptime " + ((a.daemon || {}).uptime || "?") + " · projects " + (a.projects || []).join(", ") + "\n\n";
+    return head + (a.sessions || []).map((x) => [x.id, x.role, x.status + "/" + x.activity, x.branch || "-",
+      (x.prs || []).map((p) => "#" + p.number + " ci=" + p.ci + " review=" + (p.verdict || p.review)).join(" ") || "-", x.lastActivityAt || ""].join(" | ")).join("\n");
+  }
   function render(s) {
     last = s; const now = new Date(s.now).getTime();
     const v = s.verify.counts, st = s.settings, g = s.git, prs = s.prs || [], ev = s.activity.events, rep = (s.reports || [])[0];
@@ -340,11 +358,18 @@ dialog pre .l-FAIL { color: var(--bad); font-weight: 700; } dialog pre .l-WARN {
 
     const tools = ev.filter((e) => e.kind === "tool"), recent = tools.filter((e) => now - new Date(e.at).getTime() < 600000).length;
     const rulesOk = st.deny === st.liveDeny && st.ask === st.liveAsk;
+    const ao = s.ao || { available: false }, aoS = ao.sessions || [], aoLive = aoS.filter((x) => !x.isTerminated), aoBlocked = aoLive.filter((x) => x.activity === "blocked"), aoDown = ao.available && (ao.daemon || {}).state !== "ready" && (ao.daemon || {}).state !== "loading";
+    const aoPrs = aoS.flatMap((x) => x.prs || []), aoOk = aoPrs.filter((p) => p.verdict === "approved").length;
+    const aoActive = aoLive.some((x) => x.activity === "active");
+    const aoKpi = !ao.available ? kpi("", "AO", "N/A", "—", "", "ao CLI를 찾지 못함")
+      : aoDown ? kpi("bad", "AO", "DOWN", "—", "", "데몬 " + ((ao.daemon || {}).state || "?"))
+      : kpi(aoBlocked.length ? "bad" : aoActive ? "info" : aoLive.length ? "ok" : "", "AO", aoBlocked.length ? "BLOCKED" : aoActive ? "ACTIVE" : aoLive.length ? "IDLE" : "NO SESSION", String(aoLive.length), "실행 세션", "전체 " + aoS.length + " · PR 승인 " + aoOk + "/" + aoPrs.length);
     $("kpis").replaceChildren(
       kpi(health, "설정 상태", healthTxt, v.FAIL + " FAIL", v.WARN + " WARN", "PASS " + v.PASS + " · " + ago(s.verify.at, now)),
       kpi(rulesOk ? "ok" : "warn", "권한 규칙", rulesOk ? "SYNCED" : "DRIFT", st.liveDeny + " / " + st.liveAsk, "deny / ask", "repo " + st.deny + " / " + st.ask),
       kpi(open ? "warn" : "ok", "PR", open ? open + " OPEN" : "CLEAR", String(merged), "머지됨", "최근 " + prs.length + "개 기준"),
-      kpi(recent ? "info" : "", "최근 10분", recent ? "ACTIVE" : "IDLE", String(recent), "도구 호출", s.activity.session ? "세션 " + s.activity.session : "세션 로그 없음"));
+      kpi(recent ? "info" : "", "최근 10분", recent ? "ACTIVE" : "IDLE", String(recent), "도구 호출", s.activity.session ? "세션 " + s.activity.session : "세션 로그 없음"),
+      aoKpi);
 
     const act = activeNode(ev, now), lastMerge = g.commits.find((c) => c.pr);
     const sync = st.mode === st.liveMode && rulesOk;
@@ -383,6 +408,22 @@ dialog pre .l-FAIL { color: var(--bad); font-weight: 700; } dialog pre .l-WARN {
     }) : [el("div", "empty", "세션 로그에서 이벤트를 찾지 못했습니다.")]));
     firstEvents = false;
 
+    // AO sessions: running first, newest first; the full list is in the dialog
+    const aoRows = [...aoLive, ...aoS.filter((x) => x.isTerminated)].slice(0, 6).map((x) => {
+      const [tone, txt] = AOACT[x.activity] || ["info", String(x.activity || x.status).toUpperCase()];
+      const r = el("div", "row aw" + (x.isTerminated ? " gone" : "")); const t = el("span", "t"); t.title = x.id + " · " + (x.branch || "");
+      t.append(el("b", null, x.id), document.createTextNode(x.displayName || ""));
+      const c = el("span", "chips");
+      (x.prs || []).slice(0, 2).forEach((p) => {
+        c.append(badge(p.ci === "passing" ? "ok" : p.ci === "failing" ? "bad" : "warn", "#" + p.number + " CI"));
+        const v2 = VERD[p.verdict]; if (v2) c.append(badge(v2[0], v2[1]));
+      });
+      if (!c.children.length && x.lastActivityAt) c.append(el("span", "muted", ago(x.lastActivityAt, now)));
+      r.append(badge(tone, txt, x.activity === "active"), t, c); return r;
+    });
+    $("aoNote").textContent = !ao.available ? "ao 없음" : aoDown ? "데몬 " + ((ao.daemon || {}).state || "?") : aoLive.length + " 실행 · " + (aoS.length - aoLive.length) + " 종료 · 데몬 " + (ao.daemon || {}).state;
+    $("aoRows").replaceChildren(...(aoRows.length ? aoRows : [el("div", "empty", ao.available ? "AO 세션이 없습니다." : "AO를 찾지 못했습니다.")]));
+
     // history
     $("prNote").textContent = open + " 열림 · " + merged + " 머지";
     const list = prs.slice(0, 5).map((p) => {
@@ -398,6 +439,9 @@ dialog pre .l-FAIL { color: var(--bad); font-weight: 700; } dialog pre .l-WARN {
     // checks: only what needs attention; the full text is in the dialog
     const items = [];
     s.verify.lines.filter((l) => /^(FAIL|WARN)/.test(l)).forEach((l) => items.push([l.split(" ")[0] === "FAIL" ? "bad" : "warn", l.split(" ")[0], l.replace(/^(FAIL|WARN)\s+/, "")]));
+    if (aoDown) items.push(["bad", "AO DOWN", "AO 데몬 상태 " + ((ao.daemon || {}).state || "?")]);
+    aoBlocked.forEach((x) => items.push(["bad", "BLOCKED", x.id + " · 사용자 입력 대기"]));
+    aoLive.flatMap((x) => x.prs || []).filter((p) => p.verdict === "changes_requested").forEach((p) => items.push(["warn", "REVIEW", "PR #" + p.number + " 수정 요청"]));
     ((rep || {}).text || "").split("\n").filter((l) => /OUTDATED/.test(l)).forEach((l) => items.push(["info", "UPDATE", l.split("|")[0].trim() + " · 업데이트 필요"]));
     $("chkNote").textContent = items.length ? items.length + "건" : "이상 없음";
     const rows = items.slice(0, 5).map(([tone, b, t]) => { const r = el("div", "row chk"); const x = el("span", "t", t); x.title = t; r.append(badge(tone, b), x); return r; });
