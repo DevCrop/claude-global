@@ -13,6 +13,9 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import inventory
+
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
 CONFIG = Path(os.environ.get("CLAUDE_CONFIG_DIR", Path.home() / ".claude"))
@@ -410,6 +413,19 @@ def state():
     }
 
 
+def newest_session():
+    files = list(PROJECTS.glob("*/*.jsonl")) if PROJECTS.is_dir() else []
+    return max(files, key=lambda p: p.stat().st_mtime) if files else None
+
+
+def inv():
+    v = cached("verify", 60, verify, slow=True, placeholder={"counts": {}})
+    ao = cached("ao", 8, ao_state, slow=True, placeholder={"projects": []})
+    return {"orchestration": inventory.orchestration(ROOT), "routing": inventory.routing(ROOT, ao.get("projects", [])),
+            "features": inventory.features(ROOT), "practices": inventory.practices(ROOT, CONFIG, v.get("counts")),
+            "debug": inventory.debug(newest_session()), "agents": inventory.agents(ROOT)}
+
+
 class H(BaseHTTPRequestHandler):
     def do_GET(self):
         # Refuse foreign Host headers (DNS rebinding against a local server).
@@ -418,6 +434,8 @@ class H(BaseHTTPRequestHandler):
             return
         if self.path.startswith("/api/state"):
             body, ctype = json.dumps(state()).encode(), "application/json"
+        elif self.path.startswith("/api/inventory"):
+            body, ctype = json.dumps(cached("inv", 15, inv)).encode(), "application/json"
         elif self.path in ("/", "/index.html"):
             body, ctype = (HERE / "index.html").read_bytes(), "text/html; charset=utf-8"
         else:

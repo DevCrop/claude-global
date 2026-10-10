@@ -30,7 +30,23 @@
 * { box-sizing: border-box; }
 html, body { height: 100%; }
 body { margin: 0; background: var(--bg); color: var(--fg); font: 400 var(--t-md)/1.5 var(--mono); }
-.shell { min-height: 100%; padding: var(--s4); display: grid; gap: var(--s3); grid-template-rows: auto auto auto 1fr; }
+.app { display: grid; grid-template-columns: 172px minmax(0, 1fr); min-height: 100%; }
+@media (min-width: 1100px) { .app { height: 100%; } }
+.side { background: var(--panel); border-right: 1px solid var(--line); padding: var(--s4) var(--s2); display: flex; flex-direction: column; gap: 4px; align-content: start; }
+.side .lbl { font-size: var(--t-xs); color: var(--faint); padding: 0 var(--s2) var(--s2); }
+.side button { text-align: left; font-size: var(--t-sm); color: var(--muted); background: none; border: 1px solid transparent; border-radius: var(--r-sm); padding: 7px var(--s2); }
+.side button:hover { color: var(--fg); background: var(--bg); }
+.side button[aria-current="page"] { color: var(--accent-ink); background: var(--accent-soft); border-color: var(--accent); }
+@media (max-width: 860px) { .app { grid-template-columns: minmax(0, 1fr); } .side { flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); padding: var(--s2); } .side .lbl { display: none; } .side button { white-space: nowrap; } }
+.view[hidden] { display: none !important; }
+#v-monitor { display: grid; gap: var(--s3); grid-template-rows: auto auto 1fr; min-height: 0; }
+.flow { display: grid; gap: var(--s3); align-content: start; min-height: 0; overflow: auto; }
+.grid2 { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.kv { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s2); align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: var(--t-sm); }
+.kv .sub { grid-column: 1 / -1; color: var(--muted); font-size: var(--t-xs); }
+.note { color: var(--muted); font-size: var(--t-xs); margin: 0; }
+.cmd { font-size: var(--t-xs); background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 4px 8px; overflow-x: auto; white-space: pre; }
+.shell { min-height: 100%; padding: var(--s4); display: grid; gap: var(--s3); grid-template-rows: auto 1fr; align-content: start; }
 @media (min-width: 1100px) { .shell { height: 100%; } }
 .muted { color: var(--muted); }
 .num { font-variant-numeric: tabular-nums; }
@@ -158,6 +174,17 @@ dialog pre .l-FAIL { color: var(--bad); font-weight: 700; } dialog pre .l-WARN {
 </style>
 </head>
 <body>
+<div class="app">
+<aside class="side" aria-label="화면 탭">
+  <div class="lbl">화면</div>
+  <button type="button" data-tab="monitor">모니터링</button>
+  <button type="button" data-tab="orch">오케스트레이션</button>
+  <button type="button" data-tab="route">모델 라우팅</button>
+  <button type="button" data-tab="feat">기능 목록</button>
+  <button type="button" data-tab="prac">권장기준 점검</button>
+  <button type="button" data-tab="dbg">에러·디버깅</button>
+  <button type="button" data-tab="setup">프로젝트 셋업</button>
+</aside>
 <div class="shell">
   <header class="top">
     <div class="brand">
@@ -173,6 +200,7 @@ dialog pre .l-FAIL { color: var(--bad); font-weight: 700; } dialog pre .l-WARN {
     </div>
   </header>
 
+  <section class="view" id="v-monitor">
   <div class="kpis" id="kpis"></div>
   <div class="panel pipe" id="pipe"></div>
 
@@ -207,6 +235,14 @@ dialog pre .l-FAIL { color: var(--bad); font-weight: 700; } dialog pre .l-WARN {
       </div>
     </div>
   </div>
+  </section>
+  <section class="view flow" id="v-orch" hidden></section>
+  <section class="view flow" id="v-route" hidden></section>
+  <section class="view flow" id="v-feat" hidden></section>
+  <section class="view flow" id="v-prac" hidden></section>
+  <section class="view flow" id="v-dbg" hidden></section>
+  <section class="view flow" id="v-setup" hidden></section>
+</div>
 </div>
 <div id="tip" role="tooltip"></div>
 
@@ -246,9 +282,10 @@ dialog pre .l-FAIL { color: var(--bad); font-weight: 700; } dialog pre .l-WARN {
   const bd = (tone, txt) => el("span", "badge " + tone, txt);
   const open = new Set(), SRC = { memory: "https://code.claude.com/docs/en/memory", "best-practices": "https://code.claude.com/docs/en/best-practices", permissions: "https://code.claude.com/docs/en/permissions", mcp: "https://code.claude.com/docs/en/mcp", skills: "https://code.claude.com/docs/en/skills", hooks: "https://code.claude.com/docs/en/hooks-guide", "claude-global": "https://github.com/DevCrop/claude-global/blob/main/CLAUDE.md" };
   const ACT = { add: ["info", "추가"], fix: ["warn", "수정"], remove: ["bad", "제거"] };
-  function fillProj() {
+  function fillProj(rowsEl, hintEl) {
+    rowsEl = rowsEl || $("projRows"); hintEl = hintEl || $("projHint");
     const list = (last && last.projects) || [];
-    $("projHint").textContent = list.length ? "읽기 전용: 파일 유무·줄 수·설정 키·스크립트 이름만 읽고 파일 내용은 보내지 않습니다. 행을 누르면 무엇을 추가·수정·제거할지 나옵니다." : "추적할 프로젝트가 없습니다. state/projects.txt에 경로를 한 줄씩 적거나 PROJECT_DIRS를 지정하세요.";
+    hintEl.textContent = list.length ? "읽기 전용: 파일 유무·줄 수·설정 키·스크립트 이름만 읽고 파일 내용은 보내지 않습니다. 행을 누르면 무엇을 추가·수정·제거할지 나옵니다." : "추적할 프로젝트가 없습니다. state/projects.txt에 경로를 한 줄씩 적거나 PROJECT_DIRS를 지정하세요.";
     const head = el("div", "row proj head"); ["프로젝트", "지침", "Claude 연결", "settings", "규칙", "개선"].forEach((t) => head.append(el("span", null, t)));
     const nodes = [];
     list.forEach((p) => {
@@ -260,7 +297,7 @@ dialog pre .l-FAIL { color: var(--bad); font-weight: 700; } dialog pre .l-WARN {
       r.append(!p.settings ? bd("warn", "없음") : p.defaultMode ? bd("bad", "bypass 모드") : p.denyEnv ? bd("ok", ".env deny") : bd("warn", "deny 없음"));
       r.append(bd(p.rules ? "info" : "", p.rules + "개"));
       r.append(cs.length ? bd(bad ? "bad" : "warn", cs.length + "건") : bd("ok", "충족"));
-      r.onclick = () => { open.has(p.name) ? open.delete(p.name) : open.add(p.name); fillProj(); };
+      r.onclick = () => { open.has(p.name) ? open.delete(p.name) : open.add(p.name); fillProj(rowsEl, hintEl); };
       nodes.push(r);
       if (!open.has(p.name)) return;
       const box = el("div", "adv");
@@ -272,7 +309,7 @@ dialog pre .l-FAIL { color: var(--bad); font-weight: 700; } dialog pre .l-WARN {
       });
       nodes.push(box);
     });
-    $("projRows").replaceChildren(...(list.length ? [head, ...nodes] : []));
+    rowsEl.replaceChildren(...(list.length ? [head, ...nodes] : []));
   }
   $("tabV").onclick = () => { tab = "v"; fillDlg(); }; $("tabR").onclick = () => { tab = "r"; fillDlg(); }; $("tabA").onclick = () => { tab = "a"; fillDlg(); };
   function fillDlg() {
@@ -451,8 +488,92 @@ dialog pre .l-FAIL { color: var(--bad); font-weight: 700; } dialog pre .l-WARN {
     if (pdlg.open) fillProj();
   }
 
+
+  /* Side tabs. Each tab except monitoring renders from /api/inventory (files in the repo and the newest session log). */
+  const TABS = ["monitor", "orch", "route", "feat", "prac", "dbg", "setup"];
+  let inv = null, curTab = "monitor";
+  const panel = (title, hint, ...kids) => { const p = el("div", "panel"); const h = el("div", "ph"); h.append(el("h2", null, title), el("span", "hint", hint || "")); p.append(h, ...kids); return p; };
+  const kv = (a, b, sub) => { const d = el("div", "kv"); if (a instanceof Node) d.append(a); else d.append(el("span", null, a)); const r = el("span"); if (b instanceof Node) r.append(b); else r.textContent = b == null ? "" : String(b); d.append(r); if (sub) d.append(el("div", "sub", sub)); return d; };
+  const cmd = (t) => el("div", "cmd", t);
+  const grid2 = (...k) => { const g = el("div", "grid2"); g.append(...k); return g; };
+  function wait(v) { v.replaceChildren(el("p", "note", "데이터를 기다리는 중…")); }
+  function drawOrch(v) {
+    const o = inv.orchestration;
+    v.replaceChildren(
+      grid2(
+        panel("원칙", "skills/orchestrate + CLAUDE.md", el("p", "note", o.default), ...o.global.map((t) => kv(t))),
+        panel("위임 브리프 형식", "고정 템플릿", ...o.format.map((t) => kv(t)))),
+      panel("규칙 " + o.rules.length + "개", "skills/orchestrate/SKILL.md", ...o.rules.map((t) => kv(t))),
+      panel("라우팅 표", "무엇을 건드리는지 → 에이전트", ...o.routes.map((x) => kv(x.part, bd("accent", x.agent)))),
+      panel("에이전트 " + inv.agents.length + "개", "claude/agents/", ...inv.agents.map((a) => kv(a.name, bd("info", a.model + " · " + a.effort), a.desc + " · 도구: " + a.tools + (a.skills ? " · skills: " + a.skills : "")))));
+  }
+  function drawRoute(v) {
+    const r = inv.routing;
+    v.replaceChildren(
+      grid2(
+        panel("메인 대화", "claude/settings.json", kv("model", bd("accent", r.main || "?")), kv("effortLevel", r.effort || "?"), kv("advisorModel", bd("accent", r.advisor || "없음")), kv("autoCompactWindow", r.autoCompact || "기본")),
+        panel("일일 루틴", "routines/daily-update.md", el("p", "note", r.routine || "모델 줄 없음"))),
+      panel("서브에이전트별 모델", "frontmatter model/effort", ...r.agents.map((a) => kv(a.name, bd(a.model === "haiku" ? "ok" : a.model === "opus" ? "warn" : "info", a.model + " · " + a.effort)))),
+      panel("AO 프로젝트", r.ao && r.ao.length ? r.ao.length + "개" : "없음 또는 데몬 중지", r.ao && r.ao.length ? el("div", "note", r.ao.join(", ")) : el("p", "note", "AO 워커·리뷰어 모델은 ao project get <id>로 확인합니다."), cmd("ao project set-config <id> --model <m> --reviewer <m> --permission <mode>")),
+      panel("라우팅 메모", "공식 문서·측정", ...r.notes.map((t) => kv(t))));
+  }
+  function drawFeat(v) {
+    const f = inv.features;
+    v.replaceChildren(
+      grid2(
+        panel("권한과 훅", "settings.json", kv("기본 모드", bd("accent", f.mode || "?")), kv("deny", f.deny + "개"), kv("ask", f.ask + "개"), ...Object.entries(f.denyKinds).map(([k, n]) => kv("· " + k, n + "개")), ...f.hooks.map((h) => kv("PreToolUse 훅", h.slice(0, 70)))),
+        panel("플러그인·기타", "", ...f.plugins.map((p) => kv("플러그인", p)), kv("상태줄", f.statusLine ? "켜짐" : "없음"), kv("대시보드 화면", f.dashboard.join(" · ")))),
+      panel("에이전트 " + f.agents.length, "", el("div", "note", f.agents.join(" · "))),
+      panel("스킬 " + f.skills.length, "claude/skills/", ...f.skills.map((s) => kv(s.name, "", s.desc))),
+      panel("스크립트 " + f.scripts.length, "scripts/", ...f.scripts.map((s) => kv(s.name, "", s.desc))),
+      panel("일일 루틴 단계 " + f.routine.length, "", ...f.routine.map((t) => kv(t))));
+  }
+  function drawPrac(v) {
+    const L = { ok: "충족", bad: "미충족", warn: "확인 필요" }, items = inv.practices, bad = items.filter((i) => i.level === "bad").length;
+    v.replaceChildren(panel("권장 기준 대비", items.length + "개 항목 · 미충족 " + bad, el("p", "note", "각 항목은 파일에서 바로 계산합니다. 근거 문서는 공식 Claude Code 문서입니다."),
+      ...items.map((i) => { const d = kv(i.what, bd(i.level, L[i.level] || i.level), i.evidence); const a = el("a", null, "근거: " + i.src); a.href = "https://code.claude.com/docs/en/" + i.src; a.target = "_blank"; a.rel = "noreferrer"; d.append(a); return d; })));
+  }
+  function drawDbg(v) {
+    const d = inv.debug, vf = ((last && last.verify) || {}).lines || [], bad = vf.filter((l) => /^(FAIL|WARN)/.test(l));
+    const KIND = { "hook-block": ["warn", "훅 차단"], "hook-error": ["bad", "훅 오류"], permission: ["warn", "권한 거부"], "tool-error": ["info", "도구 오류"] };
+    const kb = (k) => bd(...(KIND[k] || ["info", k]));
+    const blocked = ((last && last.ao && last.ao.sessions) || []).filter((x) => x.activity === "blocked" && !x.isTerminated);
+    v.replaceChildren(
+      grid2(
+        panel("오류 종류", "최근 세션 로그 도구 결과 " + d.scanned + "건 중", ...(Object.keys(d.counts).length ? Object.entries(d.counts).map(([k, n]) => kv(kb(k), n + "건")) : [el("p", "note", "도구 오류가 없습니다.")])),
+        panel("도구별 오류", "", ...(Object.keys(d.tools).length ? Object.entries(d.tools).sort((a, b) => b[1] - a[1]).map(([k, n]) => kv(k, n + "건")) : [el("p", "note", "없음")]))),
+      panel("최근 오류 " + d.errors.length + "건", "내용은 보내지 않고 분류만", ...d.errors.slice().reverse().map((e) => kv(kb(e.kind), e.tool + " · " + hms(e.at), e.detail ? "차단된 파일: " + e.detail : ""))),
+      panel("설정 점검 FAIL/WARN", "verify --live", ...(bad.length ? bad.map((l) => kv(l)) : [el("p", "note", "FAIL·WARN 없음")])),
+      panel("AO 멈춤", "", ...(blocked.length ? blocked.map((x) => kv(x.id, bd("warn", "사용자 입력 대기"))) : [el("p", "note", "입력 대기 중인 워커 없음")])),
+      panel("디버깅 명령", "직접 실행", cmd("bash scripts/verify.sh --live      # 설정·적용 상태"), cmd("bash scripts/qa-hooks.sh             # secret-guard 단위 시험"), cmd("bash scripts/qa-deny.sh --static      # deny 규칙의 rtk 짝"), cmd("QA_MODE=selftest bash scripts/qa-role-agents.sh <dir>   # 채점기 자체 시험"), cmd("bash scripts/qa-dashboard.sh         # 이 대시보드 검사")));
+  }
+  function drawSetup(v) {
+    const rows = el("div", "rows"), hint = el("span", "hint");
+    v.replaceChildren(panel("프로젝트 셋업 점검", "", hint, rows));
+    fillProj(rows, hint);
+  }
+  const DRAW = { orch: drawOrch, route: drawRoute, feat: drawFeat, prac: drawPrac, dbg: drawDbg, setup: drawSetup };
+  async function loadInv() {
+    try { const r = await fetch("/api/inventory", { cache: "no-store" }); inv = await r.json(); } catch (e) { return; }
+    if (curTab !== "monitor" && curTab !== "setup") show(curTab);
+  }
+  function show(t) {
+    if (!TABS.includes(t)) t = "monitor";
+    curTab = t;
+    TABS.forEach((k) => { $("v-" + k).hidden = k !== t; });
+    document.querySelectorAll(".side button").forEach((b) => { b.dataset.tab === t ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"); });
+    try { history.replaceState(null, "", "#" + t); } catch (e) {}
+    if (t === "monitor") return;
+    if (t === "setup") return DRAW.setup($("v-setup"));
+    if (!inv) { wait($("v-" + t)); loadInv(); return; }
+    DRAW[t]($("v-" + t));
+  }
+  document.querySelectorAll(".side button").forEach((b) => { b.onclick = () => show(b.dataset.tab); });
+  setInterval(() => { if (curTab !== "monitor" && curTab !== "setup") loadInv(); }, 15000);
+  show((location.hash || "").slice(1));
+
   async function tick() {
-    try { const r = await fetch("/api/state", { cache: "no-store" }); render(await r.json()); lastOk = Date.now(); } catch (e) { /* keep the last frame */ }
+    try { const r = await fetch("/api/state", { cache: "no-store" }); render(await r.json()); lastOk = Date.now(); if (curTab === "setup") show(curTab); } catch (e) { /* keep the last frame */ }
     const fresh = Date.now() - lastOk < 8000;
     $("live").className = "badge live " + (fresh ? "ok" : "bad"); $("liveText").textContent = fresh ? "LIVE · 3s" : "OFFLINE";
   }
