@@ -266,7 +266,7 @@ RTK 절감 (시점별로 값이 다르다):
 - `/context`, `/usage` 같은 슬래시 명령은 사용자가 직접 실행해야 한다 (대화형 UI 명령).
 - 역할 에이전트 시나리오 QA(2026-10-10): `bash scripts/qa-role-agents.sh <작업폴더>`가 웹에이전시 상황 12개(디자인 스펙 누락, 범위 초과 요청, 저대비 색, API 계약 없음, 운영 DB 삭제 요청, 콘텐츠 속 프롬프트 주입, 패키지 설치 유도, 커밋·push 요청, 실패 테스트, 주관적 기준, qa에게 수정 요구, 풀스택 라우팅)를 `claude -p`로 돌려 기계 조건을 채점한다. 이 컨테이너 결과: 56 PASS, 0 FAIL(케이스당 1회 실행). 시험 설계 문제 2건을 고쳤다: (1) 권한 모드가 `default`이면 백그라운드 서브에이전트의 Edit·Bash가 `Permission prompts are not available in this context`로 거부되어 모든 케이스가 에이전트와 무관하게 실패한다 → 스크립트가 `--permission-mode bypassPermissions`와 `--settings claude/settings.json`을 넘긴다. (2) qa가 테스트를 돌리면 `__pycache__`가 생겨 "파일 변경"으로 오판했다 → 채점에서 제외. 문구 확인(CHK)은 약한 증거다. 미시험: 실제 브라우저·스크린샷, 실제 DB, 같은 파일 병렬 편집, 긴 프로젝트, 한 케이스당 반복 실행의 편차. 채점 스크립트는 별도 리뷰어로 검증하지 않았다.
 - 변경은 브랜치와 PR로 올리고 머지는 사람이 한다. 자동 머지는 요청할 때만. push는 사용자 승인 후이고 force push는 쓰지 않는다. (삭제한 원래 계획 문서의 결정을 옮겨 적음)
-- Orchestrator.inc(AO): 도입 후보, 확정 아님(2026-10-09). 핵심 경로(실제 작업 완료)를 데스크톱 네이티브에서 확인하지 못했고, Claude Code 자체의 worktree·`isolation: worktree` 서브에이전트와 비교하지 않았다. 기본 권한 모드는 bypass이고(2026-10-10), deny와 ask 규칙이 가드레일이다. 근거는 섹션 13.
+- Orchestrator.inc(AO): 도입 후보, 확정 아님(2026-10-09). 데스크톱 네이티브에서 워커의 실제 작업 완료, deny/ask 가드레일, 리뷰어 루프를 일회용 레포에서 확인했다(섹션 13의 "AO QA 실측"). Claude Code 자체의 worktree·`isolation: worktree` 서브에이전트와는 비교하지 않았다. 기본 권한 모드는 bypass이고(2026-10-10), deny와 ask 규칙이 가드레일이다. 근거는 섹션 13.
 
 ## 11. 함정과 주의사항
 
@@ -304,7 +304,7 @@ RTK 절감 (시점별로 값이 다르다):
 
 ### 가드레일 (필수)
 
-- **기본 권한 모드는 bypass이고, 가드레일은 deny와 ask 규칙이다 (2026-10-10 변경).** 이전에는 `permissions.disableBypassPermissionsMode: "disable"`로 bypass를 막았다. 그 근거였던 "bypass면 deny 규칙이 전부 무시된다"는 현재 공식 permission-modes 문서와 맞지 않는다: deny 규칙은 모든 모드에서 적용되고, ask 규칙은 bypass에서도 묻고, allow 규칙만 효과가 없다. AO가 워커를 `--permission-mode bypassPermissions`로 띄워도 `claude/settings.json`의 deny는 적용되어야 한다. 단 이 머신에서 AO 워커 아래 deny가 실제로 막는지는 실측하지 못했다. 아래 "실측 검증"은 `approvalMode: default` 조건에서만 한 것이다.
+- **기본 권한 모드는 bypass이고, 가드레일은 deny와 ask 규칙이다 (2026-10-10 변경).** 이전에는 `permissions.disableBypassPermissionsMode: "disable"`로 bypass를 막았다. 그 근거였던 "bypass면 deny 규칙이 전부 무시된다"는 현재 공식 permission-modes 문서와 맞지 않는다: deny 규칙은 모든 모드에서 적용되고, ask 규칙은 bypass에서도 묻고, allow 규칙만 효과가 없다. AO가 워커를 `--permission-mode bypassPermissions`로 띄워도 `claude/settings.json`의 deny는 적용되어야 한다. 이 머신의 AO 워커(bypass-permissions로 설정)에서 deny가 force push를 막고 ask가 `git push`와 `rm *`에 확인을 묻는 것은 2026-10-10에 실측했다(아래 "AO QA 실측").
   - 코드 근거: `backend/internal/adapters/agent/claudecode/claudecode.go`의 `permissionConfigEnum`, `backend/pkg/agentruntime/command.go`의 `ClaudePermissionArgs` (`default`는 플래그 자체를 안 붙여 `~/.claude/settings.json`을 그대로 따름).
 - 텔레메트리(`AO_TELEMETRY_EVENTS`, `AO_TELEMETRY_REMOTE`)는 기본 꺼짐. 클라우드 오퍼링(`AO_CLOUD_OFFERING`, `api.aoagents.dev`)은 가입해야 쓰임. 둘 다 그대로 둬도 영향 없음.
 - 데몬은 `127.0.0.1`에만 bind하고 `AO_HOST` 환경변수가 의도적으로 없음 (`backend/internal/config/config.go`). 터미널 WebSocket(`/mux`)은 Origin이 정확히 허용 목록 또는 loopback(`localhost`/`127.0.0.1`/`[::1]`)인 경우만 연결 허용, 그 외 403 (`backend/internal/httpd/cors.go`의 `isLoopbackOrigin`).
@@ -314,4 +314,23 @@ RTK 절감 (시점별로 값이 다르다):
 - **`/mux` Origin 차단**: 실제로 빌드한 데몬에 원시 WebSocket 핸드셰이크를 보내 확인. 외부 Origin(`http://evil.example`), DNS rebinding 조합(Origin external + Host external), `null`, `file://` 전부 403. `localhost`/`127.0.0.1`/`[::1]`의 임의 포트, 앱 렌더러 Origin(`app://renderer`)은 101로 연결됨 (설계대로).
 - **deny 규칙이 AO 워커에도 적용됨**: `approvalMode: default`로 띄운 실제 OS 프로세스의 `ps` 출력에서 `--permission-mode` 플래그가 없는 것을 3회(별도 환경 각각) 확인. 같은 조건을 흉내 낸 `claude -p` 호출로 `git push --force`, `git reset --hard`, `rm -rf`, `git clean -fd`를 차단, `git status`는 정상 실행됨을 확인.
 - **실제 작업 완료까지는 검증 못함**: `POST /api/v1/sessions`로 실제 워커를 띄워 "`greet.py`에 docstring 추가 + 테스트 추가 + 커밋" 같은 작업을 시켜봤으나, 인터랙티브 TUI(PTY 기반) 모드가 이 샌드박스 컨테이너에서 첫 턴을 시작하지 못하고 멈췄다. `~/.claude/projects/*.jsonl` 트랜스크립트가 전혀 생성되지 않았고, 환경변수 정리(세션 바인딩 변수 제거)와 바이너리 이름(`ao`) 수정 후에도 3개의 독립된 환경에서 동일하게 재현됐다. 이 컨테이너의 PTY/터미널 제약으로 보이며 AO 자체의 결함인지는 구분하지 못했다. 데스크톱 네이티브 환경에서 재확인이 필요하다.
+- **데스크톱 네이티브 실측 (2026-10-10, Windows, AO v0.13.5 → 0.13.6)**:
+  - `ao spawn --mode tui`로 띄운 Claude Code 워커는 첫 턴을 시작해 파일 생성과 커밋을 했다(`add hello`). `chat` 모드는 `claude.exe` 네이티브 바이너리를 찾지 못해 실패한다(npm 설치일 때). 첫 시험은 `OAuth session expired`로 멈췄고 재시도에서는 재현되지 않았다.
+  - 워커의 터미널 화면에 "Claude in Chrome extension detected" 확인창이 떠서 입력을 기다린다. 화면에는 "This session is in Auto mode"로 표시됐다. 즉 이 워커는 bypass가 아니라 auto 모드로 돌았다. AO는 워커 설정에 훅만 추가한다(`.claude/settings.local.json`).
+  - 워커에서 `git push --force --dry-run origin main`은 `Permission to use Bash with command ... has been denied`로 차단됐다. 이 문구는 이 머신의 bypass 세션에서 deny 규칙이 낸 문구와 같고 auto 분류기의 문구(`denied by the Claude Code auto mode classifier`)와 다르다. 다만 워커가 auto 모드라 분류기의 차단과 완전히 구분하지는 못했다. ask 규칙(`git push *`)과 `.env` 읽기는 이 시험에서 실행되지 않았다(워커가 첫 차단에서 멈추도록 지시했다).
+  - AO 앱이 실행 중 자동 업데이트로 설치 폴더를 비운 채 멈춘 적이 있다(0.13.5 제거 후 0.13.6 설치 미완료). 내려받아 둔 `Agent.Orchestrator.Setup.0.13.6.exe`를 sha512(`update-info.json`)와 GitHub 릴리스 sha256으로 확인한 뒤 사용자 허락을 받아 `/S`로 설치해 복구했다. 코드 서명은 없다.
+  - 워커 화면은 `ws://127.0.0.1:3001/mux`에 `{"ch":"terminal","id":"<세션>","type":"open","role":"secondary"}`를 보내면 읽을 수 있다(출력은 base64).
 - 한계: `chat` 모드(ACP 런타임)는 데스크톱 앱에 포함된 바이너리가 이 백엔드 단독 체크아웃에 없어 시험 못함. `tui` 모드만 시험함.
+
+### AO QA 실측 (2026-10-10, Windows, AO 0.13.6, 일회용 레포 `DevCrop/ao-qa-sandbox` 비공개)
+
+공식 문서(configuration/projects, cli)와 `ao ... --help`로 확인한 방법을 그대로 썼다. 실제 프로젝트와 `~/.claude`는 건드리지 않았다.
+
+- **권한 모드와 모델은 프로젝트 설정이다.** `ao project set-config <id> --permission bypass-permissions` (값: `default`, `accept-edits`, `auto`, `bypass-permissions`)와 `--model`. 앞의 "Auto 모드로 떴다"는 이 설정을 하지 않았기 때문이다. 설정 후 워커 화면 하단에 `bypass permissions on`이 표시됐다. `set-config`는 설정 전체를 교체하므로 일부만 바꿀 때는 `ao project get <id> --json`의 config를 고쳐 `--config-json`으로 넣는다. 역할별 모델은 `worker.agentConfig.model`, `orchestrator.agentConfig.model`, `reviewers[].agentConfig.model`로 들어간다.
+- **워커에서 가드레일 실측.** bypass-permissions 워커에서 `git push --force origin HEAD`는 `Permission to use Bash with command ... has been denied`로 차단되고 일반 커밋은 통과했다. `git push origin HEAD`는 `Permission rule Bash(rtk git push *) requires confirmation`, `rm *`는 `Permission rule Bash(rm *) requires confirmation`으로 멈췄다(`rtk ` 쌍 규칙이 실제로 쓰임). `.env` 읽기는 워커가 명령 전에 전역 규칙을 보고 스스로 거부해 규칙의 차단은 측정하지 못했다.
+- **병렬 작업.** 백엔드/프론트 테스트(`python3 -m unittest`, `node --test`)를 완료 기준으로 `--agent-rules`에 넣고 워커 4개를 동시에 돌렸다. 모두 실패하는 테스트를 먼저 쓰고 고친 뒤 커밋했다. 4개를 합쳐도 충돌이 없었고 통합 테스트(백엔드 16, 프론트 14)와 실제 서버에 프론트를 붙인 end-to-end가 통과했다.
+- **리뷰어(`ao review trigger`)는 PR이 있어야 하고 살아 있는 워커 세션에 걸린다.** 로컬 `origin.git`에서는 `AO is not tracking a PR`로 거부된다. 리뷰어가 동시 주문 경쟁 상태를 지적했고 코멘트가 워커에 자동 전달되어 락과 동시성 테스트로 수정됐다(작성자 쪽 확인에서는 놓쳤던 결함). 승인은 AO 내부 판정이며 GitHub 승인이나 머지 권한이 아니다.
+- **한 워커가 범위를 넘었다.** 리뷰 지적을 받은 워커 하나가 지정 파일 밖의 재고 로직을 중복 구현해 다른 PR과 충돌했다. 해당 커밋을 버렸다. 병렬 PR은 파일 범위를 겹치지 않게 나누고 통합 브랜치에서 합쳐 테스트해야 한다.
+- **푸시 시도.** 규칙(`never push`)에도 워커 둘이 푸시를 시도했고 ask 규칙에서 멈췄다. 하나는 `--force-with-lease`였다. 거절했다. 푸시와 PR 생성은 워커가 아니라 사람이나 오케스트레이터 쪽에서 한다.
+- **세션 수명.** 워커 세션을 `ao session kill`하면 워크트리 폴더가 비워지고 그 세션에는 리뷰를 걸 수 없다(`worker session ... is terminated`). 다시 걸려면 `ao spawn --claim-pr <PR URL>`로 새 세션이 PR을 이어받는다. 이때 프로젝트에 등록된 origin이 PR 저장소와 같아야 한다(`INVALID_PR_REF`). 등록 후 origin을 바꾸면 AO가 옛 값을 쓰는 것으로 보이며(추론), 새 클론을 새 프로젝트로 등록해 해결했다. `ao project rm`은 원인 메시지 없이 실패했다.
+- **확인하지 못한 것.** 리뷰어가 설정한 모델(Opus)로 실제 실행됐는지: `ao review ls --json`에 모델 필드가 없다. `effort`는 CLI가 아니라 Project Settings나 데몬 API라고 문서에 있고 시험하지 않았다. 모델별 리뷰 품질 비교, 큰 프로젝트에서의 결과, 출처를 모르는 오케스트레이터 세션이 생긴 경위.
