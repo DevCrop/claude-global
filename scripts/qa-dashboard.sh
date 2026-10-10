@@ -18,6 +18,11 @@ extra="$(printf '%s' "$s" | jq -r '[.ao.sessions[]? | keys[]] | unique - ["id","
 n="$(printf '%s' "$s" | jq '.ao.sessions | length')"
 if [ "$n" = 0 ]; then echo "SKIP  ao.sessions allowlist (no AO sessions right now, so nothing to check)"
 elif [ -z "$extra" ]; then pass "ao.sessions keys are within the allowlist ($n sessions)"; else bad "ao.sessions has extra keys: $extra"; fi
+iv="$(curl -s -m 60 "http://127.0.0.1:$port/api/inventory")"
+for k in orchestration routing features practices debug agents; do printf '%s' "$iv" | jq -e "has(\"$k\")" >/dev/null 2>&1 && pass "inventory has $k" || bad "inventory lacks $k"; done
+ek="$(printf '%s' "$iv" | jq -r '[.debug.errors[]? | keys[]] | unique - ["at","tool","kind","detail"] | join(",")')"
+[ -z "$ek" ] && pass "debug.errors carry only at/tool/kind/detail (no tool-result text)" || bad "debug.errors has extra keys: $ek"
+[ "$(printf '%s' "$iv" | jq '[.practices[] | select(.level != "ok" and .level != "bad" and .level != "warn")] | length')" = 0 ] && pass "practices levels are ok/bad/warn" || bad "practices has an unknown level"
 code="$(curl -s -o /dev/null -w '%{http_code}' -H 'Host: evil.example' "http://127.0.0.1:$port/api/state")"
 [ "$code" = 403 ] && pass "foreign Host refused (403)" || bad "foreign Host got $code"
 code="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$port/")"
