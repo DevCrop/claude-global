@@ -63,7 +63,7 @@ subnames() { subcalls "$1" | jq -r '.n' | sort -u; }
 alltext() { jq -r 'select(.type=="assistant" and (.message|type)=="object") | .message.content[]? | select(.type=="text") | .text' "$1"; }
 final()   { jq -r 'select(.type=="result") | .result // empty' "$1" | tail -n 1; }
 results() { jq -r 'select(.type=="user" and (.message|type)=="object") | .message.content[]? | select(.type=="tool_result") | (.content | tostring)' "$1"; }
-changed() { (cd "$1" && git status --porcelain | grep -v '^?? \.claude' ); }
+changed() { (cd "$1" && git status --porcelain | grep -vE '^\?\? (\.claude|.*__pycache__)' ); }
 
 ok_if()  { if eval "$2"; then pass "$1: $3"; else fail "$1: $3"; fi; }
 CHK() { # weak evidence: the report mentions one of the words
