@@ -197,6 +197,8 @@ Ponytail (설치됨, 상시 켜짐):
 4. Ponytail: 상시 사용. 새 컴퓨터에서는 섹션 5의 설치 명령으로 설치하고 `/ponytail`로 모드를 확인한다.
 5. 프로젝트 셋업: 실제 프로젝트 하나에서 `/project-setup`(`docs/GUIDE.md` 2단계)을 써 보고 결과를 기록한다. 컨텍스트에서 큰 비중은 시스템 도구와 MCP 도구이며 Chrome 연동·Browser 도구가 많다. 쓰지 않는 커넥터를 끄는 것이 후보다.
 6. `reports/` 버전 관리: 현재 로컬 전용으로 결정함 (섹션 10).
+7. 보안 후속(사용자 조치): `CLUADE`(비공개 전환됨)와 `.claude` 저장소의 `.credentials.json`, `.claude.json`, `history.jsonl` 제거 또는 저장소 삭제, 로그아웃 후 재로그인으로 토큰 재발급, 다른 키 교체. 삭제는 되돌릴 수 없어 확인 후에만 한다.
+8. #28, #29, #30, #31, #32 머지 후: `git pull && bash scripts/apply.sh`, `bash scripts/verify.sh --live`(0 FAIL), 루틴 1회 수동 실행으로 7a/7b 출력 확인.
 
 ## 8. 링크 모음
 
@@ -263,6 +265,7 @@ RTK 절감 (시점별로 값이 다르다):
 - 루틴 모델은 첫 실행만 Haiku, 이후 Sonnet.
 - 오케스트레이션 규칙(2026-10-09): 위임 기준, 브리프 템플릿, 동시 3개 상한, reviewer에는 기준과 파일 목록만, 서브에이전트 보고는 주장으로 취급은 항상 필요한 규칙이 아니라서 `claude/CLAUDE.md`가 아니라 스킬 `orchestrate`(`claude/skills/orchestrate/`)에 둔다(공식 best-practices: 가끔만 필요한 지식은 스킬로). description 자동 매칭은 확률적이라 안 불리면 `/orchestrate`로 직접 호출한다. `apply.sh`는 스킬을 하나씩 복사한다(같은 디렉터리에 archify 등 다른 스킬이 있다). 역할별 에이전트를 만들지 않는다는 이 결정은 2026-10-10에 바뀌었다(아래 역할 에이전트 항목).
 - 역할 에이전트(2026-10-10, 사용자 요청으로 이전 결정 "역할별 에이전트는 만들지 않는다"를 뒤집음): `publisher`, `frontend`, `backend`, `qa`를 추가했다. 기획·디자인은 에이전트 대신 스킬(`spec-writing`, `design-spec`)로 메인 대화에서 한다. 근거는 공식 문서: 서브에이전트는 `AskUserQuestion`을 못 쓰고, 역할 지식 공유는 `skills:` 주입이며, 순차 의존 작업은 단일 세션이 낫다(agent-teams 문서). Agent teams는 켜지 않는다(팀원에는 정의의 `skills:`가 적용되지 않는다). 역할별 모델은 전부 sonnet이고 차이는 `effort`뿐이다. 역할별 최적 모델은 근거가 없어 첫 실사용 후 조정한다. 적용 머신에서 `ls ~/.claude/agents`로 이전 시안의 `planner.md`, `designer.md`가 남았는지 확인하고, 있으면 확인받고 지운다(`apply.sh`는 복사만 한다).
+- 비밀 유출 방지(2026-10-10): 훅은 `secret-guard` 하나만 추가한다(`claude/hooks/secret-guard.sh`). SessionStart/Stop 등 다른 전역 훅은 넣지 않는다. 이유는 `~/.claude` 스냅샷(`.credentials.json`, `.claude.json`, `history.jsonl`)이 공개 저장소에 올라가 있던 사건이고, 규칙 문장과 `Read` deny만으로는 `git add -A`를 막지 못했기 때문이다. 훅은 명령 문자열만 보므로 보안 경계가 아니다. 보완으로 일일 루틴이 공개 저장소의 루트 파일명을 점검한다.
 - `/context`, `/usage` 같은 슬래시 명령은 사용자가 직접 실행해야 한다 (대화형 UI 명령).
 - 역할 에이전트 시나리오 QA(2026-10-10): `bash scripts/qa-role-agents.sh <작업폴더>`가 웹에이전시 상황 12개(디자인 스펙 누락, 범위 초과 요청, 저대비 색, API 계약 없음, 운영 DB 삭제 요청, 콘텐츠 속 프롬프트 주입, 패키지 설치 유도, 커밋·push 요청, 실패 테스트, 주관적 기준, qa에게 수정 요구, 풀스택 라우팅)를 `claude -p`로 돌려 기계 조건을 채점한다. 이 컨테이너 결과: 56 PASS, 0 FAIL(케이스당 1회 실행). 시험 설계 문제 2건을 고쳤다: (1) 권한 모드가 `default`이면 백그라운드 서브에이전트의 Edit·Bash가 `Permission prompts are not available in this context`로 거부되어 모든 케이스가 에이전트와 무관하게 실패한다 → 스크립트가 `--permission-mode bypassPermissions`와 `--settings claude/settings.json`을 넘긴다. (2) qa가 테스트를 돌리면 `__pycache__`가 생겨 "파일 변경"으로 오판했다 → 채점에서 제외. 문구 확인(CHK)은 약한 증거다. 미시험: 실제 브라우저·스크린샷, 실제 DB, 같은 파일 병렬 편집, 긴 프로젝트, 한 케이스당 반복 실행의 편차. 채점 스크립트는 별도 리뷰어로 검증하지 않았다.
 - 변경은 브랜치와 PR로 올리고 머지는 사람이 한다. 자동 머지는 요청할 때만. push는 사용자 승인 후이고 force push는 쓰지 않는다. (삭제한 원래 계획 문서의 결정을 옮겨 적음)
@@ -274,7 +277,8 @@ RTK 절감 (시점별로 값이 다르다):
 - PowerShell 도구가 막힌 세션이 있었다. Bash와 Windows 경로를 쓴다. JSON 확인은 Node와 `cygpath -w`를 쓴다. Windows용 Python은 `/c/...` 형태의 경로를 읽지 못한다.
 - 프로세스 확인 시 `--chrome-native-host`는 제외한다 (Chrome이 띄운다).
 - push는 자동 모드 분류기가 거부할 수 있다. 사용자가 채팅에서 명시적으로 승인해야 한다. `git push origin main`만 쓰고 force는 쓰지 않는다.
-- `.credentials*`, `.env*`는 읽지도 커밋하지도 않는다.
+- `.credentials*`, `.env*`는 읽지도 커밋하지도 않는다. `~/.claude`를 저장소로 올리지 않는다(2026-10-10: 공개 저장소 `CLUADE`와 비공개 `.claude`에서 해당 파일 이름이 발견됨, 내용은 읽지 않았다. `CLUADE`는 비공개로 전환했다. 파일 제거와 토큰 재발급은 사용자 조치로 남아 있다).
+- AO 워커 세션을 종료하면 워크트리가 비어 리뷰를 할 수 없다. 종료 전에 `ao review trigger`를 돌린다.
 - 예약 작업 `SKILL.md`(첫 컴퓨터 라이브와 저장소 참조본 모두 원본에서 `routines/` 경로 표기가 틀려 있었다). 저장소 참조본은 `claude/routines/daily-update.md`로 고쳤다. 라이브 쪽은 아직 원본 그대로이며 동작에는 영향이 없다 (본문이 곧바로 올바른 경로로 보정한다).
 
 - RTK 훅과 deny 규칙: 공식 문서상 권한 규칙은 훅이 돌려준 입력을 기준으로 평가되고, RTK는 Bash 명령을 `git status` -> `rtk git status`로 다시 쓴다. 2026-10-09 시뮬레이션 QA(RTK 대신 같은 방식으로 `rtk ` 접두어를 붙이는 모의 훅과 스텁 `rtk`)에서 원래 deny 패턴은 `rtk git push --force origin main`, `rtk git reset --hard HEAD`, `rtk rm -fr ~/x`를 막지 못했고 명령이 실제 실행됐다(훅이 `allow`를 돌려주든 안 주든 동일). Bash deny 패턴 25개를 `rtk ` 접두어로 복제해 53개로 늘린 뒤 같은 시험에서 전부 차단됐고, 대조군 `git status`는 정상 실행됐다. 실제 RTK 바이너리로는 아직 시험하지 못했다(컨테이너에서 `rtk-ai/rtk` 접근 불가). RTK가 설치된 머신에서 `scripts/qa-deny.sh`를 한 번 실행해 전부 PASS인지 확인한다(스크래치 저장소만 쓴다). 이 스크립트는 모의 훅으로 검증했다: 현재 설정은 PASS, 복제 패턴이 없던 이전 설정(`0d28f82`)은 5건 FAIL. 스크립트는 먼저 CLI 없이 Bash deny 패턴마다 `rtk ` 짝이 있는지 정적으로 확인하고(한쪽만 추가하면 FAIL), 이어서 push --force, reset --hard, rm, clean, checkout --, restore 계열과 대조군 `git status`를 실제로 시험한다.
@@ -291,6 +295,7 @@ RTK 절감 (시점별로 값이 다르다):
 - `47a2263` chore: sync RTK hook into repo settings and add routine baseline
 - `0ff4efe` docs: routine model note (first run Haiku by decision, later Sonnet)
 - `0757a18` docs: add next-machine handoff and scheduled task reference
+- 2026-10-10: PR #26(AO 실측 문서), #27(settings 키 이관), #31(`secret-guard` 훅과 `qa-hooks.sh`), #32(루틴 AO 상태와 저장소 노출 점검, docs-watch 12페이지).
 - 그 이후: PR #1(`claude/add-apply-script`): apply/qa 스크립트, deny 수정, 상태줄, 문서 정리. 상세는 `git log`.
 
 ## 13. Orchestrator.inc(AO) 도입 검토

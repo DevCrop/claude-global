@@ -24,3 +24,9 @@ Default to one agent. Delegate only when the part does not block the main thread
 6. Give `qa` and `reviewer` the criteria and the changed file list only, never the author's reasoning or a verdict to confirm.
 7. A delegate's report is a claim. Check the evidence it cites before relaying it as done.
 8. High-volume, well-defined subagent tasks run on Haiku.
+
+## AO (Orchestrator.inc) instead of subagents
+- Use it only for long parallel work with disjoint file scopes; otherwise use the subagents above.
+- Put the done criteria and "never push" in `--agent-rules`; permissions come from `--permission`, and deny/ask rules still apply to workers.
+- Trigger `ao review` before ending a worker session (an ended session cannot be reviewed); a person pushes and merges.
+- Details and measurements: `docs/NEXT-MACHINE.md` section 13.
