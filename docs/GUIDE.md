@@ -6,7 +6,7 @@ End-to-end order for a machine and a project. Sources: Claude Code docs (best-pr
 
 | Layer | What | Where |
 |---|---|---|
-| Always on, every machine | RTK hook, Ponytail plugin, permissions (deny and ask rules, default mode bypassPermissions), short global `CLAUDE.md`, status line, agents `explorer` `reviewer` `worker` `publisher` `frontend` `backend` `qa`, daily routine | this repo, applied to `~/.claude` |
+| Always on, every machine | RTK hook, Ponytail plugin, permissions (deny and ask rules, default mode bypassPermissions), `secret-guard` hook, short global `CLAUDE.md`, status line, agents `explorer` `reviewer` `worker` `publisher` `frontend` `backend` `qa`, daily routine | this repo, applied to `~/.claude` |
 | On demand | skill `orchestrate` (description match, or `/orchestrate`), skills `spec-writing` and `design-spec` (planning and design in the main thread), skill `project-setup` (manual, `/project-setup`), Superpowers plugin in project or local scope only, AO as an external app | skills, plugin scope, the user |
 | Per project, once | project `CLAUDE.md`, path-scoped rules, verification command, project permissions | the project's `.claude/` |
 
@@ -41,6 +41,8 @@ bash scripts/verify.sh --full    # also runs qa-deny.sh (claude CLI + haiku); ru
 ```
 
 Done when `verify.sh --live` prints `0 FAIL`. WARN lines are informational (for example no `.ponytail-active` flag before the first new session). Then spot-check by hand: `rtk gain` total commands grows after a few Bash calls, the status line shows `[model] N% context`, `/context` lists the global `CLAUDE.md`, and `claude plugin details ponytail` shows its always-on token cost.
+
+A machine-local `env` block in the live `settings.json` (for example `CLAUDE_CODE_TMPDIR`) is kept by `apply.sh` and ignored by `verify.sh`; the repo copy has no `env`.
 
 Undo: copy files back from `~/.claude-backup-<timestamp>/`.
 
@@ -91,11 +93,22 @@ The default mode is `bypassPermissions` (decision 2026-10-10). Per the permissio
 - An AO worker started with `--permission-mode bypassPermissions` falls under the same deny and ask rules. This is the documented behavior. In a bypass session on this machine, deny rules blocked a `.env` read and a force push (2026-10-10, see `docs/NEXT-MACHINE.md`); an AO worker with `ao project set-config <id> --permission bypass-permissions` showed `bypass permissions on`, was blocked on the same force push by the deny rule, and stopped at the ask rules for `git push *` and `rm *` (2026-10-10). Without that setting the worker ran in Auto mode. The `.env` block by a worker is not measured.
 - To go back to prompts, change `permissions.defaultMode` in `claude/settings.json` and the check in `scripts/verify.sh` in one PR, then run `bash scripts/apply.sh`.
 
+## Secret-guard hook
+
+`claude/hooks/secret-guard.sh` runs before every Bash call (PreToolUse; exit 2 blocks, per the hooks doc). Calls without `git` plus `add`, `stage`, `commit` or `push` pass at once. Otherwise it blocks when a secret-looking name would be staged, committed or pushed: `.credentials*`, `.env`, `.env.*`, `.claude.json`, `history.jsonl`, `*.pem`, `id_rsa*`; names ending in `.example`, `.sample`, `.template` and `id_rsa*.pub` are allowed. It also catches an `rtk ` prefix, `-C dir`, `cd dir &&`, quotes, `bash -c`, `git stage` and globals such as `--no-pager`. A blocked call prints the file names; fix it by removing them from the change or adding them to `.gitignore`. To turn it off, remove its entry from `claude/settings.json` in a PR and run `bash scripts/apply.sh`.
+
+Limit: it reads the command text. Aliases, scripts that call git, variables, `xargs`/`find -exec`, paths with spaces, brace expansion and `eval` are not seen (a reviewer found these on 2026-10-10), and it has no timeout of its own, so a huge repository can make it slow, so it is a guard rail, not a boundary. The daily routine's repository exposure check (step 7b) covers what reaches a public repository anyway. Tests: `bash scripts/qa-hooks.sh` (also run by `verify.sh`).
+
+## AO (Orchestrator.inc) use
+
+Use AO only for parallel work with disjoint file scopes. Set permissions with `ao project set-config <id> --permission ...` (it replaces the whole config: round-trip `ao project get --json` first), put the done criteria and "never push" in `--agent-rules`, and push and merge by hand. Killing a worker session empties its worktree and blocks review, so trigger `ao review trigger` before ending it, or re-register the repository and use `--claim-pr`. Measured behavior and traps: `docs/NEXT-MACHINE.md` section 13.
+
 ## Not verified
 
 - Windows Git Bash and macOS behavior of `apply.sh`, `verify.sh`, the plugin hooks and `qa-deny.sh` with the real RTK hook (tested on Linux without RTK).
 - The `claude plugin list` output format that `verify.sh` parses for the Ponytail status; a changed format shows up as a WARN, not a false PASS.
 - Superpowers' hook on Windows Git Bash, and how often `orchestrate` is loaded by description matching (`/orchestrate` is the fallback).
+- `secret-guard`: macOS bash 3.2 and BSD `sed`/`tr` behavior, hook latency, and running next to the real RTK hook (checked with RTK-less project settings in `bypassPermissions`: `git add -A` was blocked).
 - `project-setup` was dry-run once on a scratch PHP + React project; the interactive approval flow and real projects are untested.
 
 ## Deliberately not adopted

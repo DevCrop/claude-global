@@ -7,6 +7,7 @@ Source of truth for the global Claude Code setup on this machine (`~/.claude`).
 - `claude/CLAUDE.md` — global rules, copied to `~/.claude/CLAUDE.md`
 - `claude/settings.json` — global settings, copied to `~/.claude/settings.json`
 - `claude/RTK.md`, `claude/agents/`, `claude/skills/` — RTK note, subagents (`explorer`, `reviewer`, `worker`, `publisher`, `frontend`, `backend`, `qa`) and skills (`orchestrate`, `project-setup`, `spec-writing`, `design-spec`, `ui-baseline`), copied to `~/.claude/`
+- `claude/hooks/secret-guard.sh` — PreToolUse hook: blocks `git add/stage/commit/push` of secret-looking files (`.credentials*`, `.env*`, `.claude.json`, `history.jsonl`, `*.pem`, `id_rsa*`)
 - `claude/routines/`, `claude/scheduled-tasks/` — daily update routine and the scheduled task body
 - `docs/GUIDE.md` — setup order for a machine and for a project, and the per-task flow
 - `docs/NEXT-MACHINE.md` — full handoff: decisions, links, routine, remaining work, setup order for a new machine
@@ -14,6 +15,7 @@ Source of truth for the global Claude Code setup on this machine (`~/.claude`).
 - `scripts/apply.sh` — copies `claude/` into `~/.claude/` with a backup
 - `scripts/verify.sh` — read-only checks: repo, `--live` for this machine's applied state, `--full` adds the deny/ask QA
 - `scripts/docs-watch.sh` — diffs the official docs pages this setup depends on (used by the daily routine)
+- `scripts/qa-hooks.sh` — unit tests for the hook with no model calls (pass a mutated copy to prove the checks discriminate)
 - `scripts/qa-deny.sh` — checks that the deny rules still block dangerous commands on this machine, with hooks such as rtk active
 
 Runtime data (credentials, session history, auto-memory, plugins, caches) is never stored here. See `.gitignore`.
