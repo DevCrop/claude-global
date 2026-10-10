@@ -117,6 +117,9 @@
 에이전트 (`claude/agents/`):
 - `reviewer`: model sonnet, effort high, 도구 Read/Grep/Glob/Bash. 다른 에이전트의 작업을 기준에 맞춰 검증한다.
 - `explorer`: model haiku, 도구 Read/Grep/Glob (읽기 전용), `omitClaudeMd: true`(호출마다 CLAUDE.md 로딩 생략, Claude Code v2.1.271 이상). 질문 하나를 넓게 검색해 10줄 이내로 답한다.
+- `planner`(기획): model sonnet, 도구 Read/Grep/Glob/Write. 요청을 스펙 문서(목표, 범위, 수용 기준)로 만든다.
+- `designer`(디자인): model sonnet, 도구 Read/Grep/Glob/Write. 스펙을 토큰·레이아웃·상태·접근성 명세로 바꾼다.
+- `publisher`(퍼블): model sonnet, 도구 Read/Grep/Glob/Edit/Write/Bash. 디자인 명세를 반응형·접근성 HTML/CSS로 구현한다. 검증은 `reviewer`.
 
 규칙 요약 (`claude/CLAUDE.md`, 원문이 우선):
 - 한국어 응답. 요청을 먼저 되풀이하고, 모호하면 2~3개 해석을 제시.
