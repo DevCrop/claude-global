@@ -64,7 +64,7 @@ prompt() { case "$1" in
 esac; }
 
 # stream filters. .message can be a string on some events, so every access is guarded.
-types()   { jq -r 'select(.type=="assistant" and (.message|type)=="object") | .message.content[]? | select(.type=="tool_use" and (.name=="Agent" or .name=="Task")) | .input.subagent_type // empty' "$1" | sort -u; }
+types()   { jq -r 'select(.type=="assistant" and (.message|type)=="object") | .message.content[]? | select(.type=="tool_use" and (.name=="Agent" or .name=="Task")) | .input.subagent_type // empty' "$1" | tr -d '\r' | sort -u; }
 subcalls() { jq -c 'select(.type=="assistant" and .parent_tool_use_id!=null and (.message|type)=="object") | .message.content[]? | select(.type=="tool_use") | {n:.name,i:.input}' "$1"; }
 # Tool calls made by subagents of one type (an Agent call id maps to its subagent_type; sub events carry parent_tool_use_id).
 typecalls() { jq -s -c --arg t "$2" '. as $all | ([$all[] | select(.type=="assistant" and (.message|type)=="object") | .message.content[]? | select(.type=="tool_use" and (.name=="Agent" or .name=="Task")) | {key:.id, value:.input.subagent_type}] | from_entries) as $m | $all[] | select(.type=="assistant" and .parent_tool_use_id!=null and (.message|type)=="object" and ($m[.parent_tool_use_id]==$t)) | .message.content[]? | select(.type=="tool_use") | {n:.name,i:.input}' "$1"; }
