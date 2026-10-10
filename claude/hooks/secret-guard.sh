@@ -4,14 +4,15 @@
 # Limit: it reads the command string. Not seen: aliases, scripts that call git, variables, xargs/find -exec, paths with spaces, brace expansion, eval.
 # No timeout of its own: a huge repo can make `git status` slow (set a hook timeout in settings if that bites).
 input="$(cat)"
-case "$input" in *git*) ;; *) exit 0 ;; esac
+case "$input" in *g*i*t*) ;; *) exit 0 ;; esac  # cheap gate before jq; g''it still passes it
 command -v jq >/dev/null 2>&1 || { echo "secret-guard: jq not found, check skipped" >&2; exit 0; }
 cmd="$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2>/dev/null | tr -d '\r')"
 cwd="$(printf '%s' "$input" | jq -r '.cwd // empty' 2>/dev/null | tr -d '\r')"
 [ -n "$cmd" ] || exit 0
 
 # Fast path: no git word next to add/stage/commit/push means nothing to check.
-printf '%s' "$cmd" | grep -Eq '(^|[^[:alnum:]_.-])git([^[:alnum:]_-]|$)' && printf '%s' "$cmd" | grep -Eq '(add|stage|commit|push)' || exit 0
+flat="$(printf '%s' "$cmd" | tr -d "\"'")"
+printf '%s' "$flat" | grep -Eq '(^|[^[:alnum:]_.-])\\?git([^[:alnum:]_-]|$)' && printf '%s' "$flat" | grep -Eq '(add|stage|commit|push)' || exit 0
 
 is_secret() {
   b="$(basename "$1" | tr '[:upper:]' '[:lower:]')"
@@ -27,14 +28,15 @@ absdir() { (cd "$1" 2>/dev/null && cd "$2" 2>/dev/null && pwd); }
 
 set -f
 cur="${cwd:-.}"
-# Quotes, parens, backticks and $ become spaces (so "bash -c 'git add -A'" and $(git add -A) are seen); ; | & split segments.
-segs="$(printf '%s\n' "$cmd" | tr '"'"'"'()`$' '      ' | tr ';|&' '\n\n\n')"
+# Backslash-newline joins lines; quotes are deleted (g''it is git, "bash -c 'git add -A'" is seen); parens, backticks and $
+# become spaces ($(git add -A) is seen); ; | & split segments.
+segs="$(printf '%s\n' "$cmd" | sed -e ':a' -e '/\\$/N;s/\\\n/ /;ta' | tr -d "\"'" | tr '()`$' '    ' | tr ';|&' '\n\n\n')"
 while IFS= read -r seg; do
   # shellcheck disable=SC2086
   set -- $seg
   [ "$#" -gt 0 ] || continue
   if [ "$1" = cd ] && [ -n "${2:-}" ]; then d="${2/#\~/$HOME}"; n="$(absdir "$cur" "$d")"; [ -n "$n" ] && cur="$n"; continue; fi
-  while [ "$#" -gt 0 ] && [ "${1##*/}" != git ]; do shift; done
+  while [ "$#" -gt 0 ] && [ "${1#\\}" != git ] && [ "${1##*/}" != git ]; do shift; done
   [ "$#" -gt 0 ] || continue
   shift; dir="$cur"
   while [ "$#" -gt 0 ]; do

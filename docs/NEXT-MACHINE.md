@@ -174,7 +174,7 @@ Ponytail (설치됨, 상시 켜짐):
   3. 모델은 앱의 Scheduled 화면에서 Sonnet으로 지정한다.
   4. 한 번 수동 실행해 보고서가 생기는지 확인한다.
 - 두 컴퓨터에서 같은 루틴을 켜도 된다(2026-10-09 결정). `reports/`는 컴퓨터마다 로컬이라 겹치지 않고 각자 설치 상태를 점검한다. `state/last-seen.json`도 머신별 로컬 파일(`.gitignore`)이라 `rtk_total_commands` 같은 값이 다른 컴퓨터 값과 섞이지 않고 `git pull`도 막히지 않는다. 새 컴퓨터는 파일이 없어 첫 실행에서 변경 로그 10개와 "RTK in use: unknown"으로 시작한다.
-- 루틴 절차(`claude/routines/daily-update.md`): `claude --version` → 공식 변경 로그와 Anthropic 뉴스 확인 → 항목 분류 → 도구 버전 → `scripts/verify.sh --live`(적용 상태·도구·Ponytail) → `scripts/docs-watch.sh`(공식 문서 8페이지 변경) → 보고서 작성 → `last-seen.json` 갱신. 설치·push·`~/.claude` 수정은 하지 않는다.
+- 루틴 절차(`claude/routines/daily-update.md`): `claude --version` → 공식 변경 로그와 Anthropic 뉴스 확인 → 항목 분류 → 도구 버전 → `scripts/verify.sh --live`(적용 상태·도구·Ponytail) → `scripts/docs-watch.sh`(공식 문서 12페이지 변경) → 보고서 작성 → `last-seen.json` 갱신. 설치·push·`~/.claude` 수정은 하지 않는다.
 
 ## 7. 남은 작업 (순서대로)
 

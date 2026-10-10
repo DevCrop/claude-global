@@ -190,7 +190,9 @@ def debug(session_file):
                 detail = ""
                 if k == "hook-block":
                     m = re.search(r"included:(.*)", text)
-                    detail = ", ".join(os.path.basename(t) for t in (m.group(1).split()[:4] if m else []))
+                    pat = re.compile(r"^(\.credentials|\.env($|\.)|\.claude\.json$|history\.jsonl$|id_rsa)|\.pem$", re.I)
+                    names = [os.path.basename(t) for t in (m.group(1).split()[:4] if m else [])]
+                    detail = ", ".join(n for n in names if pat.search(n))  # only secret-looking names leave, never other words
                 out["counts"][k] = out["counts"].get(k, 0) + 1
                 out["tools"][tool] = out["tools"].get(tool, 0) + 1
                 out["errors"].append({"at": d.get("timestamp"), "tool": tool, "kind": k, "detail": detail})
