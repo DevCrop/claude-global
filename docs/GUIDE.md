@@ -95,7 +95,7 @@ The default mode is `bypassPermissions` (decision 2026-10-10). Per the permissio
 
 `claude/hooks/secret-guard.sh` runs before every Bash call (PreToolUse; exit 2 blocks, per the hooks doc). Calls without `git` plus `add`, `stage`, `commit` or `push` pass at once. Otherwise it blocks when a secret-looking name would be staged, committed or pushed: `.credentials*`, `.env`, `.env.*`, `.claude.json`, `history.jsonl`, `*.pem`, `id_rsa*`; names ending in `.example`, `.sample`, `.template` and `id_rsa*.pub` are allowed. It also catches an `rtk ` prefix, `-C dir`, `cd dir &&`, quotes, `bash -c`, `git stage` and globals such as `--no-pager`. A blocked call prints the file names; fix it by removing them from the change or adding them to `.gitignore`. To turn it off, remove its entry from `claude/settings.json` in a PR and run `bash scripts/apply.sh`.
 
-Limit: it reads the command text. Aliases, scripts that call git, variables and `eval` are not seen, so it is a guard rail, not a boundary. The daily routine's repository exposure check (step 7b) covers what reaches a public repository anyway. Tests: `bash scripts/qa-hooks.sh` (also run by `verify.sh`).
+Limit: it reads the command text. Aliases, scripts that call git, variables, `xargs`/`find -exec`, paths with spaces, brace expansion and `eval` are not seen (a reviewer found these on 2026-10-10), and it has no timeout of its own, so a huge repository can make it slow, so it is a guard rail, not a boundary. The daily routine's repository exposure check (step 7b) covers what reaches a public repository anyway. Tests: `bash scripts/qa-hooks.sh` (also run by `verify.sh`).
 
 ## AO (Orchestrator.inc) use
 
