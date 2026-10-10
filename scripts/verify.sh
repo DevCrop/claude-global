@@ -57,6 +57,13 @@ for f in "$repo"/scripts/*.sh; do bash -n "$f" 2>/dev/null || { fail "bash -n fa
 # 3. every Bash deny/ask pattern has its rtk twin
 if out="$(bash "$repo/scripts/qa-deny.sh" --static 2>&1)"; then pass "$(printf '%s' "$out" | sed 's/^PASS  //')"; else fail "rtk twin check: $out"; fi
 
+# 3b. secret-guard hook: file present, referenced from settings.json, unit tests pass
+if [ -f "$src/hooks/secret-guard.sh" ] && jq -e '[.hooks.PreToolUse[].hooks[].command] | any(contains("hooks/secret-guard.sh"))' "$src/settings.json" >/dev/null 2>&1; then
+  if out="$(bash "$repo/scripts/qa-hooks.sh" 2>&1)"; then pass "secret-guard hook ($(printf '%s' "$out" | grep -c '^PASS') unit cases)"; else fail "secret-guard unit tests: $(printf '%s' "$out" | grep '^FAIL' | head -3)"; fi
+else
+  fail "secret-guard hook missing or not referenced in settings.json"
+fi
+
 # 4. settings that must stay on
 # Default mode is bypassPermissions (decision 2026-10-10). Deny rules still apply in that mode (permission-modes doc), so they must exist;
 # a leftover bypass lock would stop the mode from starting.
@@ -157,9 +164,9 @@ $(find "$src/$item" -type f)
 EOF
     else
       if ! cmp -s "$src/$item" "$dest/$item"; then
-        # settings.json: key order alone is not drift
+        # settings.json: key order alone is not drift, and "env" is machine-local (apply.sh keeps it)
         if [ "$item" = "settings.json" ] && command -v jq >/dev/null 2>&1 \
-           && [ "$(jq -S . "$src/$item" 2>/dev/null)" = "$(jq -S . "$dest/$item" 2>/dev/null)" ]; then
+           && [ "$(jq -S 'del(.env)' "$src/$item" 2>/dev/null)" = "$(jq -S 'del(.env)' "$dest/$item" 2>/dev/null)" ]; then
           :
         else
           drift=" $item"

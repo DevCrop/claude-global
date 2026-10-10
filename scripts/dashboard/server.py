@@ -3,7 +3,7 @@
 
 Run: python3 scripts/dashboard/server.py [--port 8787]
 Optional: PROJECT_DIRS or state/projects.txt lists project roots; the "프로젝트 셋업" dialog shows file presence, line counts, setting keys and script names.
-Reads: git history, gh PR list, scripts/verify.sh --live, reports/*.md, claude/settings.json,
+Reads: git history, gh PR list, scripts/verify.sh --live, reports/*.md, claude/settings.json, the AO daemon (ao status, session ls, review ls; read-only),
 and the tool-call names and timestamps of the newest session log in ~/.claude/projects.
 It parses the log tail in memory but emits only tool names, times, a file basename, and a command's first word plus a plain subcommand
 (never arguments, so a pasted token or `KEY=value` cannot leave the machine). Message text is never emitted.
@@ -118,6 +118,45 @@ def reports():
             items.append({"name": f.name, "mtime": datetime.fromtimestamp(f.stat().st_mtime, timezone.utc).isoformat(),
                           "text": f.read_text(encoding="utf-8", errors="replace")[:4000]})
     return items
+
+
+def ao_bin():
+    for c in (os.environ.get("AO_BIN"), str(Path(os.environ.get("LOCALAPPDATA", "")) / "Programs/agent-orchestrator/resources/daemon/ao.exe"), shutil.which("ao")):
+        if c and Path(c).exists():
+            return c
+    return None
+
+
+def ao_json(binary, args):
+    try:
+        return json.loads(run([binary, *args], timeout=20))
+    except Exception:
+        return None
+
+
+def ao_state():
+    """AO daemon and worker sessions. Read-only calls only (status, session ls, review ls); prompts and review bodies are never emitted."""
+    binary = ao_bin()
+    if not binary:
+        return {"available": False}
+    st = ao_json(binary, ["status", "--json"])
+    if not st:
+        return {"available": True, "daemon": {"state": "down"}, "sessions": []}
+    raw = (ao_json(binary, ["session", "ls", "--all", "--include-terminated", "--json"]) or {}).get("data") or []
+    sessions = []
+    for s in raw:
+        sessions.append({k: s.get(k) for k in ("id", "projectId", "role", "displayName", "status", "activity", "branch", "prs", "isTerminated", "lastActivityAt", "createdAt")})
+    sessions.sort(key=lambda s: s.get("lastActivityAt") or "", reverse=True)
+    for s in [s for s in sessions if s["prs"]][:10]:
+        rv = ao_json(binary, ["review", "ls", s["id"], "--json"]) or {}
+        by_pr = {r.get("prNumber"): r for r in rv.get("reviews", [])}
+        for p in s["prs"]:
+            r = by_pr.get(p.get("number"))
+            if r:
+                p["reviewStatus"] = r.get("status")
+                p["verdict"] = (r.get("latestRun") or {}).get("verdict")
+    return {"available": True, "daemon": {k: st.get(k) for k in ("state", "uptime", "port", "health", "ready")}, "sessions": sessions[:40],
+            "projects": [p.get("id") for p in (ao_json(binary, ["project", "ls", "--json"]) or {}).get("projects", [])]}
 
 
 def safe_command(cmd):
@@ -365,6 +404,7 @@ def state():
         "verify": cached("verify", 60, verify, slow=True, placeholder={"at": datetime.now(timezone.utc).isoformat(), "counts": {"PASS": 0, "FAIL": 0, "WARN": 0}, "lines": ["검증 실행 중..."]}),
         "settings": cached("settings", 5, settings),
         "reports": cached("reports", 30, reports),
+        "ao": cached("ao", 8, ao_state, slow=True, placeholder={"available": True, "daemon": {"state": "loading"}, "sessions": []}),
         "activity": session_events(),
         "projects": cached("projects", 10, projects),
     }
