@@ -6,8 +6,8 @@
 input="$(cat)"
 case "$input" in *git*) ;; *) exit 0 ;; esac
 command -v jq >/dev/null 2>&1 || { echo "secret-guard: jq not found, check skipped" >&2; exit 0; }
-cmd="$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2>/dev/null)"
-cwd="$(printf '%s' "$input" | jq -r '.cwd // empty' 2>/dev/null)"
+cmd="$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2>/dev/null | tr -d '\r')"
+cwd="$(printf '%s' "$input" | jq -r '.cwd // empty' 2>/dev/null | tr -d '\r')"
 [ -n "$cmd" ] || exit 0
 
 # Fast path: no git word next to add/stage/commit/push means nothing to check.
