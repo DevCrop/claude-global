@@ -7,8 +7,8 @@ set -eu
 
 repo="$(cd "$(dirname "$0")/.." && pwd)"
 cache="$repo/reports/docs-cache"
-# Pages this setup depends on: CLAUDE.md and rules, skills, subagents, permissions, plugins, settings, hooks, best practices.
-pages="best-practices memory skills sub-agents permissions plugins settings hooks-guide"
+# Pages this setup depends on: CLAUDE.md and rules, skills, subagents, permissions, plugins, settings, hooks, best practices, permission modes, agent teams, monitoring, worktrees.
+pages="best-practices memory skills sub-agents permissions plugins settings hooks-guide permission-modes agent-teams monitoring-usage worktrees"
 update=0
 [ "${1:-}" = "--update" ] && update=1
 
