@@ -44,6 +44,16 @@ run 2 'bash -c "git add -A"'
 run 2 'git add $(echo .env)'
 run 2 'git add *.pem'
 run 2 'git add :/'
+run 2 '\git add -A'
+run 2 "g''it add -A"
+run 2 $'git add \\\n-A'
+# CR from Windows jq: a fake jq in front of PATH appends CR to every output line; multi-line commands must still be judged.
+# Known gap: this case also passes with the CR strip removed (a reviewer proved the strip is needed with a separate fake jq), so it is a smoke test, not a proof.
+mkdir -p "$t/bin"; real="$(command -v jq)"
+printf '%s\n' '#!/bin/bash' "\"$real\" \"\$@\" | awk '{printf \"%s\\r\\n\", \$0}'" > "$t/bin/jq"; chmod +x "$t/bin/jq"
+PATH="$t/bin:$PATH" run 2 "$(printf 'git add -A\ngit commit -m x')"
+PATH="$t/bin:$PATH" run 0 'git status'
+
 run 2 "$(printf 'git add -A
 git commit -m x')"
 run 2 "$(printf 'echo start
