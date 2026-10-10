@@ -159,6 +159,13 @@ Ponytail (설치됨, 상시 켜짐):
 
 두 도구의 최신 버전은 일일 루틴이 추적한다(섹션 6). 설치와 업데이트는 루틴이 하지 않는다. Ponytail이 없거나 꺼져 있으면 루틴이 이상으로 보고한다.
 
+출처 확인 (2026-10-11): Ponytail, RTK, Archify, AO는 모두 공식 마켓플레이스(`anthropics/claude-plugins-official`)에 없다. 근거는 로컬 마켓플레이스 캐시(`marketplace.json`, `plugin-directory-cache-v2.json`) 이름 검색이며 온라인 재확인은 하지 않았다. 그래서 GitHub 저장소로 확인하고 유지하기로 했다(사용자 결정).
+- Ponytail `DietrichGebert/ponytail`: MIT, 개인 소유, v5.1.0(2026-10-08), 설치본 커밋 `9cc65d0`이 `chore: release v5.1.0`과 일치. 훅 6개 중 네트워크 호출은 찾지 못했고 `ponytail-map.js`만 `git ls-files`를 실행한다(정규식 검색 기준, 전체 코드 감사는 아님).
+- RTK `rtk-ai/rtk`: Apache-2.0, 조직 소유, 0.51.0(2026-10-02). README상 텔레메트리는 기본 꺼짐이며 옵트인. 이 머신은 `rtk telemetry status`가 `enabled: no`, `consent: never asked`.
+- Archify `tt-a1i/archify`: MIT, 개인 소유, v3.0.1(2026-09-28). 위 설치본 바이트 일치 검증이 있다.
+- AO `OrchestratorInc/agent-orchestrator`: Apache-2.0, 조직 소유, 최신 v0.13.7(2026-10-10), 이 머신 설치본은 0.13.6.
+- 한계: 소스 전체를 읽은 것이 아니라 메타데이터, README, Ponytail 훅의 정규식 검색만 했다. 공식 마켓플레이스의 검수를 받지 않았으므로 업데이트 때마다 변경 내역을 본다.
+
 ## 6. 예약 루틴 `daily-claude-update`
 
 - 목적: Claude Code 변경 로그, Anthropic 뉴스, Claude Code와 RTK의 최신 버전을 매일 확인하고 도구 상태(설정 드리프트, rtk PATH, rtk 사용량)를 점검해 보고서만 쓴다. `~/.claude`는 바꾸지 않고 아무것도 설치하지 않는다. 업데이트 명령은 보고서에 적고 사용자가 실행한다.
