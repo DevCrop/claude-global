@@ -157,9 +157,9 @@ $(find "$src/$item" -type f)
 EOF
     else
       if ! cmp -s "$src/$item" "$dest/$item"; then
-        # settings.json: key order alone is not drift
+        # settings.json: key order alone is not drift, and "env" is machine-local (apply.sh keeps it)
         if [ "$item" = "settings.json" ] && command -v jq >/dev/null 2>&1 \
-           && [ "$(jq -S . "$src/$item" 2>/dev/null)" = "$(jq -S . "$dest/$item" 2>/dev/null)" ]; then
+           && [ "$(jq -S 'del(.env)' "$src/$item" 2>/dev/null)" = "$(jq -S 'del(.env)' "$dest/$item" 2>/dev/null)" ]; then
           :
         else
           drift=" $item"
