@@ -19,6 +19,7 @@ Applies to every project on this machine. Project `CLAUDE.md` files add to these
 - Opus is the configured advisor; consult it before committing to an approach, on a recurring error, and before declaring a task done.
 - Retry limit: two attempts on the same error. Then stop, state the exact error, suggest /rewind, and wait for the user.
 - Delegation rules (when to split, the brief template, limits) are in the `orchestrate` skill.
+- Never invent an input a delegate needs (an API contract, a spec, a criterion) and put it in a brief. Get it from the user or the repo; if you cannot, report the stop and what is missing.
 
 ## Safety
 - Permission mode is bypassPermissions by default. Deny and ask rules still apply, but allow rules do not, so these rules and your own confirmation are the guard.
