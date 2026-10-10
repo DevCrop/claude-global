@@ -613,7 +613,9 @@ dialog pre .l-FAIL { color: var(--bad); font-weight: 700; } dialog pre .l-WARN {
   (function navIcons() { const M = { monitor: "activity", dbg: "alert", orch: "flow", route: "route", feat: "list", prac: "checkc", setup: "folder" };
     document.querySelectorAll(".side button[data-tab]").forEach((b) => { const i = b.querySelector(".ic"); if (i) i.replaceChildren(ico(M[b.dataset.tab] || "dot", 17)); }); })();
   const SN = (tag, attrs, text) => { const e = sv(tag, attrs || {}); if (text != null) e.textContent = text; return e; };
-  const diagram = (svg) => { const d = el("div", "dia"); d.append(svg); return d; };
+  let DID = 0;
+  // marker ids are per document, so give each diagram its own copy (hidden views keep their SVGs)
+  const diagram = (svg) => { const u = "-" + (++DID); svg.querySelectorAll("marker").forEach((m) => { m.id += u; }); svg.querySelectorAll("[marker-end]").forEach((e) => e.setAttribute("marker-end", e.getAttribute("marker-end").replace(/\)$/, u + ")"))); const d = el("div", "dia"); d.append(svg); return d; };
   function defs(svg) {
     const d = SN("defs"); [["ah-call", "var(--accent)"], ["ah-ret", "var(--faint)"], ["ah-edge", "var(--faint)"]].forEach(([id, c]) => {
       const m = SN("marker", { id: id, viewBox: "0 0 10 10", refX: "9", refY: "5", markerWidth: "8", markerHeight: "8", orient: "auto-start-reverse" });
