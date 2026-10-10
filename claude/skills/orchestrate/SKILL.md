@@ -18,8 +18,8 @@ Default to one agent. Delegate only when the part does not block the main thread
    | One search question | `explorer` |
    | A change no role above fits | `worker` |
 
-3. Usual order: spec, design, then `backend` and `publisher` together, then `frontend` (it needs the backend's API contract from its Open issues), then `qa`, then `reviewer`.
-4. A delegate does not see this conversation. Brief it with: Task (one sentence), Files (paths it needs, the spec and design paths, the API contract), Return format, Done criteria (checkable by a command or a file read), Out of scope.
+3. Usual order: spec, design, then `backend` and `publisher` together, then `frontend` (it needs the contract file `docs/api-<topic>.md` that `backend` writes), then `qa`, then `reviewer`.
+4. A delegate does not see this conversation. Brief it with: Task (one sentence), Files (paths it needs, the spec and design paths, the API contract file), Return format, Done criteria (checkable by a command or a file read), Out of scope.
 5. At most 3 delegates at once, and no two may edit the same file. Each owns one unit: a feature slice with its tests, one search question, or one verification.
 6. Give `qa` and `reviewer` the criteria and the changed file list only, never the author's reasoning or a verdict to confirm.
 7. A delegate's report is a claim. Check the evidence it cites before relaying it as done.

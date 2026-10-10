@@ -13,5 +13,6 @@ Run this in the main conversation (the user must answer questions; subagents can
    - API needs (what the client must get from the server), if any.
    - Acceptance criteria. Each one must be checkable by a command, a request or a file read. Rewrite any that is not.
    - Open questions.
-3. Mark every assumption "Assumption:". Do not invent requirements the user did not give.
-4. The file must stand alone: designer, publisher, frontend, backend and qa read it without this conversation. Name the files and interfaces involved.
+3. Change request on an existing spec (the client asks for a change after delivery): update that spec file in place instead of writing a new one. Add a "Changes" entry with the date, what changed, and which screens, API and acceptance criteria it touches, and mark the old criteria it replaces. Do not widen the request.
+4. Mark every assumption "Assumption:". Do not invent requirements the user did not give.
+5. The file must stand alone: designer, publisher, frontend, backend and qa read it without this conversation. Name the files and interfaces involved.
