@@ -88,7 +88,7 @@ Habits: `/clear` between unrelated tasks; after two failed corrections on one is
 The default mode is `bypassPermissions` (decision 2026-10-10). Per the permission-modes doc, deny rules apply in every mode including bypass, explicit ask rules and `rm`/`rmdir` on critical paths still prompt, and allow rules have no effect. So `permissions.deny` and `permissions.ask` in `claude/settings.json` are the guard. `verify.sh` fails when `defaultMode` is not `bypassPermissions`, when a bypass lock is present, or when `deny` or `ask` is missing or empty.
 
 - `defaultMode: "bypassPermissions"` takes effect only from user settings (`~/.claude/settings.json`, written by `apply.sh`), not from a project `.claude/settings.json`. Claude Desktop also needs the "Allow bypass permissions mode" toggle.
-- An AO worker started with `--permission-mode bypassPermissions` falls under the same deny and ask rules. This is the documented behavior. In a bypass session on this machine, deny rules blocked a `.env` read and a force push (2026-10-10, see `docs/NEXT-MACHINE.md`); the AO worker case and ask rules are not measured.
+- An AO worker started with `--permission-mode bypassPermissions` falls under the same deny and ask rules. This is the documented behavior. In a bypass session on this machine, deny rules blocked a `.env` read and a force push (2026-10-10, see `docs/NEXT-MACHINE.md`); an AO worker (`--mode tui`, which showed Auto mode) was blocked on the same force push with the deny-rule message (2026-10-10). Ask rules and the bypass-mode worker case are not measured.
 - To go back to prompts, change `permissions.defaultMode` in `claude/settings.json` and the check in `scripts/verify.sh` in one PR, then run `bash scripts/apply.sh`.
 
 ## Not verified

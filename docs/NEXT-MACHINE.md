@@ -307,4 +307,10 @@ RTK 절감 (시점별로 값이 다르다):
 - **`/mux` Origin 차단**: 실제로 빌드한 데몬에 원시 WebSocket 핸드셰이크를 보내 확인. 외부 Origin(`http://evil.example`), DNS rebinding 조합(Origin external + Host external), `null`, `file://` 전부 403. `localhost`/`127.0.0.1`/`[::1]`의 임의 포트, 앱 렌더러 Origin(`app://renderer`)은 101로 연결됨 (설계대로).
 - **deny 규칙이 AO 워커에도 적용됨**: `approvalMode: default`로 띄운 실제 OS 프로세스의 `ps` 출력에서 `--permission-mode` 플래그가 없는 것을 3회(별도 환경 각각) 확인. 같은 조건을 흉내 낸 `claude -p` 호출로 `git push --force`, `git reset --hard`, `rm -rf`, `git clean -fd`를 차단, `git status`는 정상 실행됨을 확인.
 - **실제 작업 완료까지는 검증 못함**: `POST /api/v1/sessions`로 실제 워커를 띄워 "`greet.py`에 docstring 추가 + 테스트 추가 + 커밋" 같은 작업을 시켜봤으나, 인터랙티브 TUI(PTY 기반) 모드가 이 샌드박스 컨테이너에서 첫 턴을 시작하지 못하고 멈췄다. `~/.claude/projects/*.jsonl` 트랜스크립트가 전혀 생성되지 않았고, 환경변수 정리(세션 바인딩 변수 제거)와 바이너리 이름(`ao`) 수정 후에도 3개의 독립된 환경에서 동일하게 재현됐다. 이 컨테이너의 PTY/터미널 제약으로 보이며 AO 자체의 결함인지는 구분하지 못했다. 데스크톱 네이티브 환경에서 재확인이 필요하다.
+- **데스크톱 네이티브 실측 (2026-10-10, Windows, AO v0.13.5 → 0.13.6)**:
+  - `ao spawn --mode tui`로 띄운 Claude Code 워커는 첫 턴을 시작해 파일 생성과 커밋을 했다(`add hello`). `chat` 모드는 `claude.exe` 네이티브 바이너리를 찾지 못해 실패한다(npm 설치일 때). 첫 시험은 `OAuth session expired`로 멈췄고 재시도에서는 재현되지 않았다.
+  - 워커의 터미널 화면에 "Claude in Chrome extension detected" 확인창이 떠서 입력을 기다린다. 화면에는 "This session is in Auto mode"로 표시됐다. 즉 이 워커는 bypass가 아니라 auto 모드로 돌았다. AO는 워커 설정에 훅만 추가한다(`.claude/settings.local.json`).
+  - 워커에서 `git push --force --dry-run origin main`은 `Permission to use Bash with command ... has been denied`로 차단됐다. 이 문구는 이 머신의 bypass 세션에서 deny 규칙이 낸 문구와 같고 auto 분류기의 문구(`denied by the Claude Code auto mode classifier`)와 다르다. 다만 워커가 auto 모드라 분류기의 차단과 완전히 구분하지는 못했다. ask 규칙(`git push *`)과 `.env` 읽기는 이 시험에서 실행되지 않았다(워커가 첫 차단에서 멈추도록 지시했다).
+  - AO 앱이 실행 중 자동 업데이트로 설치 폴더를 비운 채 멈춘 적이 있다(0.13.5 제거 후 0.13.6 설치 미완료). 내려받아 둔 `Agent.Orchestrator.Setup.0.13.6.exe`를 sha512(`update-info.json`)와 GitHub 릴리스 sha256으로 확인한 뒤 사용자 허락을 받아 `/S`로 설치해 복구했다. 코드 서명은 없다.
+  - 워커 화면은 `ws://127.0.0.1:3001/mux`에 `{"ch":"terminal","id":"<세션>","type":"open","role":"secondary"}`를 보내면 읽을 수 있다(출력은 base64).
 - 한계: `chat` 모드(ACP 런타임)는 데스크톱 앱에 포함된 바이너리가 이 백엔드 단독 체크아웃에 없어 시험 못함. `tui` 모드만 시험함.
