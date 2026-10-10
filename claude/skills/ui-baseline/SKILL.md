@@ -1,6 +1,6 @@
 ---
 name: ui-baseline
-description: Shared UI baseline for publisher and frontend: semantic HTML, responsive, accessibility and token rules. Preloaded by those agents.
+description: Shared UI baseline for the publisher and frontend agents (semantic HTML, responsive, accessibility, token rules). Preloaded by those agents.
 user-invocable: false
 ---
 

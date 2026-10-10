@@ -1,6 +1,6 @@
 ---
 name: orchestrate
-description: Use when splitting work across subagents or parallel agents, before delegating to a role agent (publisher, frontend, backend, qa), explorer, worker or reviewer, or when deciding whether to delegate at all.
+description: Use when splitting work across subagents, before delegating to a role agent (publisher, frontend, backend, qa), explorer, worker or reviewer, or when deciding whether to delegate at all.
 ---
 
 Default to one agent. Delegate only when the part does not block the main thread's next step, or its output is large and mostly irrelevant to it. Otherwise work inline.
