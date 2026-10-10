@@ -44,6 +44,11 @@ run 2 'bash -c "git add -A"'
 run 2 'git add $(echo .env)'
 run 2 'git add *.pem'
 run 2 'git add :/'
+run 2 "$(printf 'git add -A
+git commit -m x')"
+run 2 "$(printf 'echo start
+git add k.pem
+echo done')"
 mkdir "$t/clean"; (cd "$t/clean" && git init -q . && echo y > c.txt)
 CWD="$t/clean" run 2 "cd $r && git add -A"
 CWD="$t/clean" run 0 'git add -A'
