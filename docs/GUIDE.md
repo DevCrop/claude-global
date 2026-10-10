@@ -6,8 +6,8 @@ End-to-end order for a machine and a project. Sources: Claude Code docs (best-pr
 
 | Layer | What | Where |
 |---|---|---|
-| Always on, every machine | RTK hook, Ponytail plugin, permissions (deny and ask rules, default mode bypassPermissions), short global `CLAUDE.md`, status line, agents `explorer` `reviewer` `worker`, daily routine | this repo, applied to `~/.claude` |
-| On demand | skill `orchestrate` (description match, or `/orchestrate`), skill `project-setup` (manual, `/project-setup`), Superpowers plugin in project or local scope only, AO as an external app | skills, plugin scope, the user |
+| Always on, every machine | RTK hook, Ponytail plugin, permissions (deny and ask rules, default mode bypassPermissions), short global `CLAUDE.md`, status line, agents `explorer` `reviewer` `worker` `publisher` `frontend` `backend` `qa`, daily routine | this repo, applied to `~/.claude` |
+| On demand | skill `orchestrate` (description match, or `/orchestrate`), skills `spec-writing` and `design-spec` (planning and design in the main thread), skill `project-setup` (manual, `/project-setup`), Superpowers plugin in project or local scope only, AO as an external app | skills, plugin scope, the user |
 | Per project, once | project `CLAUDE.md`, path-scoped rules, verification command, project permissions | the project's `.claude/` |
 
 Never install Superpowers at user scope: an enabled plugin is part of every session, and its SessionStart hook injects the bootstrap each time (plugins doc).
